@@ -1,0 +1,110 @@
+"Name"     = 'Battle Droid Language'
+"Author"   = 'B. Gian James'
+"Version"  = '1A'
+"About"    = 'The low-level assembly access to the AVR Battle Droid device.'
+
+"Start Symbol" = Program
+"Case Sensitive" = False
+
+! -------------------------------------------------
+! Character Sets
+! -------------------------------------------------
+
+{ID Head}      = {Letter} + [_] + [@] + [$]
+!{ID Tail}      = {Alphanumeric} + [_]
+{ID Tail}      = {ID Head} + {Number}
+{String Chars} = {Printable} + {HT} - ["]
+{Register Chars} = [rR%]
+{Hex Chars} = {Number} + [abcdef]
+{Bin Chars} = [01]
+            
+
+! -------------------------------------------------
+! Terminals
+! -------------------------------------------------
+
+!Identifier    = {ID Head}{ID Tail}*
+Identifier    = {ID Head}+ | {ID Head}+ {ID Tail}*
+StringLiteral = '"' {String Chars}* '"'
+HexLiteral = 0[xX] {Hex Chars}+
+BinLiteral = 0[bB] {Bin Chars}+      
+DecimalLiteral = {Number}+     
+NL = {CR}{LF}|{CR}|{LF}
+   
+
+! -------------------------------------------------
+! Rules
+! -------------------------------------------------
+! ...prologue...
+
+
+! The grammar starts below
+<Program> 
+::= <Statements>
+           
+<Statements> 
+::= <ASM Statement> <Statements> 
+|
+
+<nl> 
+::= NL <nl>
+| NL 
+                   
+<ASM Statement> ::= <ADD Statement><nl>
+                 | <Label><nl>
+                 
+<ADD Statement> ::= ADD <R2R>
+                 | ADD <NUM2R>
+                 | ADD <MEM2R>
+                 | ADD <R2MEM>
+                 
+               
+!<NEG Statement> ::= NEG <REGS> | NEG <MEMS>
+                 
+!<MOV Statement> ::= MOV <R2R>
+!                 | MOV <NUM2R>
+!                 | MOV <MEM2R>
+!                 | MOV <R2MEM>
+                 
+!<RET Statement> ::= RET | RET <Numeric>
+                 
+!<NOT Statement> ::= NOT <REGS> | NOT <MEMS>
+                           
+<Label> ::= Identifier ':'
+         
+<Numeric> ::= HexLiteral | BinLiteral | DecimalLiteral
+           
+<REG SP> ::= SP
+
+<REGS> ::= <R0>
+        | <R1>
+        
+<R0> ::= R0
+
+<R1> ::= R1
+      
+<MEMS> ::= 'DWORD' 'PTR' <MEM ADDR>
+        
+<MEM ADDR> ::= '[' <SIB> ']' 
+            | '[' <Numeric> ':' <SIB> ']'
+            
+<SIB> ::= <REG OR LIT>
+       | <REG OR LIT> '+' <REG OR LIT>
+       | <REG OR LIT> '*' <REG OR LIT>
+       | <REG OR LIT> '*' <REG OR LIT> '+' <REG OR LIT>
+       | Identifier
+       
+<REG OR LIT> :: = <Numeric>
+        | <REGS>
+
+<R2R> ::= <REGS> ',' <REGS>
+       
+<NUM2R> ::= <REGS> ',' <Numeric>
+         
+<MEM2R> ::= <REGS> ',' <MEMS>
+         
+<NUM2MEM> ::= <MEMS> ',' <Numeric>
+           
+<R2MEM> ::= <MEMS> ',' <REGS>
+         
+

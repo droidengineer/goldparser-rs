@@ -1,0 +1,301 @@
+"Name"     = 'SIDEARM'
+"Author"   = 'B. Gian James'
+"Version"  = '1.5'
+"About"    = 'A mostly-compatible rendition of an AVR ATmega instruction set grammar'
+
+"Start Symbol" = <Start>
+"Case Sensitive" = False
+                 
+! -------------------------------------------------
+! Character Sets
+! -------------------------------------------------
+
+{WS}           = {Whitespace} - {CR} - {LF}
+{ID Head}      = {Letter} + [_] + [@] + [$]
+{ID Tail}      = {ID Head} + {Number}
+{String Chars} = {Printable} + {HT} - ["\]
+{Hex Chars}     = [ABCDEFabcdef0123456789]
+{Bin Chars}     = [01]
+{Byte Bits}     = [01234567]
+!{Number}        = [0123456789]
+                
+! -------------------------------------------------
+! Terminals
+! -------------------------------------------------
+
+! The following defines the Whitespace terminal using the {WS}
+! set - which excludes the carriage return and line feed 
+! characters
+
+Whitespace    = {WS}+
+NewLine       = {CR}{LF} | {CR} | {LF}
+
+Identifier    = {ID Head}+ | {ID Head}+{ID Tail}*
+StringLiteral = '"' ( {String Chars} | '\' {Printable} )* '"'
+!Label         = {ID Head}{ID Tail}* ':'
+              
+HexLiteral      = ('0x'|'$') {Hex Chars}+
+BinaryLiteral      = '0b' {Bin Chars}+
+IntLiteral      = {Number}+
+      
+Comment Line = ';'
+Comment Start = '/*'
+Comment End = '*/'
+
+            
+!GPIORegister    = 'r0' | 'r1' | 'r2' | 'r3' | 'r4' | 'r5' | 'r6'
+!            | 'r7' | 'r8' | 'r9' | 'r10' | 'r11' | 'r12'
+!            | 'r13' | 'r14' | 'r15' | 'r16' | 'r17' | 'r18'
+!            | 'r19' | 'r20' | 'r21' | 'r22' | 'r23' | 'r24'
+!            | 'r25' | 'r26' | 'r27' | 'r28' | 'r29' | 'r30'
+!            | 'r31' | 'x' | 'y' | 'z' | 'pc' | 'ir' | 'ear'
+!            | 'sp'
+           
+!Register        = 'sreg' | 'mcucr'
+                
+!ExtRegister = 'aa' | 'ab'
+
+BitLoc      = {Byte Bits}
+
+! -------------------------------------------------
+! Rules
+! -------------------------------------------------
+
+! The following rule defines a series of newline tokens.
+! Use this rule rather than the newline terminal.
+
+<nl> ::= NewLine <nl> !One or more
+         |  NewLine
+
+<nl Opt> ::= <nl> <nl Opt> !Zero or more
+ |  !Empty
+ 
+!<Register> ::= GPIORegister | Register | ExtRegister | Identifier
+
+! <nl opt> removes blank lines before first statement
+<Label> ::= Identifier ':'
+         
+<Numeric> ::= HexLiteral | BinLiteral | IntLiteral
+           
+
+<Start>   ::= <nl Opt> <Statements>
+
+!<Program> ::= 
+           
+<Statements>     ::= <Statement> <nl Opt> <Statements>
+                 | <Statement> <nl Opt>
+                
+                
+<Statement>    ::= <Directive>
+                 | Label
+                 | <Operation>
+                 | <Function>
+                 
+!<Label>         ::= Identifier ':' <nl Opt>
+                 
+<Directive>     ::= <Label> '.' BYTE <Expression>
+                 | '.cseg' | '.dseg' | '.eseg'
+                 | '.db' Identifier '=' <Expression>
+                 | '.' DD
+                 | Identifier '.byte' <Numeric>
+                 | '.def' Identifier '=' <Register>
+                 | '.device' Identifier
+                 | '.dq'
+                 | '.dw' Identifier '=' Value
+                 | '.elif'
+                 | '.else'
+                 | '.endif'
+ !                | '.endmacro'
+                 | '.equ' Identifier '=' <Numeric>
+                 | '.exit'
+                 | '.if'
+                 | '.ifdef'
+                 | '.ifndef'
+                 | '.include' StringLiteral
+                 | '.list'
+                 | '.listmac'
+                 | '.macro' <Statements> '.endmacro'
+                 | '.message'
+                 | '.nolist'
+                 | '.org' <Numeric>
+                 | '.pragma'
+                 | '.set' Identifier '=' <Expression>
+                 | '.undef' Identifier
+                 | '.warning' StringLiteral
+                 
+<Operation>     ::= 'add' Identifier ',' Identifier
+                 | 'adc' Identifier ',' Identifier
+                 | 'adiw' Identifier ',' <Numeric>
+                 | 'sub' Identifier ',' Identifier
+                 | 'subi' Identifier ',' <Numeric>
+                 | 'sbc' Identifier ',' Identifier
+                 | 'sbci' Identifier ',' <Numeric>
+                 | 'sbiw' Identifier ',' <Numeric>
+                 | 'mul' Identifier ',' Identifier
+                 | 'muls' Identifier ',' Identifier
+                 | 'mulsu' Identifier ',' Identifier
+                 | 'fmul' Identifier ',' Identifier
+                 | 'fmuls' Identifier ',' Identifier
+                 | 'fmulsu' Identifier ',' Identifier
+!                 | 'div' Identifier ',' Identifier
+                 | 'cpse' Identifier ',' Identifier
+                 | 'cp' Identifier ',' Identifier
+                 | 'cpi' Identifier ',' <Numeric>
+                 | 'sbrc' Identifier ',' BitLoc
+                 | 'sbrs' Identifier ',' BitLoc
+                 | 'sbic' Port ',' BitLoc
+                 | 'sbis' Port ',' BitLoc
+                 | 'sbi' Port ',' BitLoc
+                 | 'cbi' Port ',' BitLoc
+                 | 'bst' Identifier ',' BitLoc
+                 | 'bld' Identifier ',' BitLoc
+                 | 'brbs' Identifier
+                 | 'brbc' Identifier
+                 | 'breq' Identifier
+                 | 'brne' Identifier
+                 | 'brcs' Identifier
+                 | 'brcc' Identifier
+                 | 'brsh' Identifier
+                 | 'brlo' Identifier
+                 | 'brmi' Identifier
+                 | 'brpl' Identifier
+                 | 'brge' Identifier
+                 | 'brlt' Identifier
+                 | 'brhs' Identifier
+                 | 'brhc' Identifier
+                 | 'brts' Identifier
+                 | 'brtc' Identifier
+                 | 'brvs' Identifier
+                 | 'brvc' Identifier
+                 | 'brie' Identifier
+                 | 'brid' Identifier
+                 | 'and' Identifier ',' Identifier
+                 | 'andi' Reigster ',' <Numeric>
+                 | 'or' Identifier ',' Identifier
+                 | 'ori' Identifier ',' <Numeric>
+                 | 'eor' Identifier ',' Identifier
+                 | 'mov' <Register> ',' <Register>
+                 | 'movw' Identifier ',' Identifier
+                 | 'in' Identifier ',' Port
+                 | 'out' Port ',' Identifier
+                 | 'sbr' Identifier ',' <Numeric>
+                 | 'cbr' Identifier ',' <Numeric>
+                 | 'ldi' <Register> ',' <Numeric>
+                 | 'lds' Identifier ',' Identifier
+                 | 'ld' Identifier ',' Identifier !x                 
+                 | 'ld' Identifier ',' '-x'                
+                 | 'ld' Identifier ',' 'x+'                  
+!                 | 'ld' Identifier ',' Identifier !Y
+                 | 'ld' Identifier ',' '-y'             
+                 | 'ld' Identifier ',' 'y+'
+!                 | 'ld' Identifier ',' Identifier !Z 
+                 | 'ld' Identifier ',' '-z'               
+                 | 'ld' Identifier ',' 'z+'
+                 | 'ldd' !TODO
+                 | 'sts' Identifier ',' Identifier
+                 | 'st'  Identifier ',' Identifier !X
+                 | 'st'  '-x' ',' Identifier                 
+                 | 'st'  'x+' ',' Identifier
+ !                | 'st' Identifier ',' Identifier
+                 | 'st' '-y' ',' Identifier                 
+                 | 'st' 'y+' ',' Identifier
+ !                | 'st' Identifier ',' Identifier
+                 | 'st' '-z' ',' Identifier                 
+                 | 'st' 'z+' ',' Identifier
+                 | 'lpm'
+                 | 'lpm' Identifier ',' Identifier
+                 | 'lpm' Identifier ',' 'z+'                 
+                 | 'elpm' Identifier ',' Identifier
+                 | 'elpm' Identifier ',' 'z+'                 
+                 | 'spm' | 'spm' 'z+'                           
+                 | 'com' Identifier
+                 | 'neg' Identifier
+                 | 'inc' Identifier
+                 | 'dec' Identifier
+                 | 'tst' Identifier
+                 | 'clr' Identifier
+                 | 'ser' Identifier
+                 | 'sbr' Identifier
+                 | 'cbr' Identifier
+                 | 'push' Identifier
+                 | 'pop' Identifier
+                 | 'mdi' Identifier
+                 | 'mdd' Identifier
+                 | 'lsl' Identifier
+                 | 'lsr' Identifier
+                 | 'rol' Identifier
+                 | 'ror' Identifier
+                 | 'asr' Identifier
+                 | 'swap' Identifier
+                 | 'des' <Numeric>
+                 | 'rjmp' Identifier
+                 | 'ijmp'   !TODO
+                 | 'eijmp' !TODO
+                 | 'jmp' Identifier
+                 | 'rcall' Identifier
+                 | 'icall' !TODO
+                 | 'eicall' !TODO
+                 | 'call' Identifier
+                 | 'sec' | 'clc' | 'sen' | 'cln' | 'sez' | 'clz'
+                 | 'sei' | 'cli' | 'ses' | 'cls' | 'sev' | 'clv'
+                 | 'set' | 'clt' | 'seh' | 'clh'
+                 | 'break'
+                 | 'nop'
+                 | 'sleep'
+                 | 'wdr'
+                 | 'ret' | 'reti'
+                 | 'bset' | 'bclr'
+                 
+<Function>      ::= 'low' '(' <Expression> ')'
+                 | 'high' '(' <Expression> ')'
+                 | 'byte2' '(' <Expression> ')'
+                 | 'byte3' '(' <Expression> ')'
+                 | 'byte4' '(' <Expression> ')'
+                 | 'lwrd' '(' <Expression> ')'
+                 | 'hwrd' '(' <Expression> ')'
+                 | 'page' '(' <Expression> ')'
+                 | 'exp2' '(' <Expression> ')'
+                 | 'log2' '(' <Expression> ')'
+                 
+<Expression>  ::= <Expression> '>'  <Add Exp> 
+               |  <Expression> '<'  <Add Exp> 
+               |  <Expression> '<=' <Add Exp> 
+               |  <Expression> '>=' <Add Exp>
+               |  <Expression> '==' <Add Exp>    !Equal
+               |  <Expression> '!=' <Add Exp>    !Not equal
+               |  <Add Exp> 
+
+<Add Exp>     ::= <Add Exp> '+' <Mult Exp>
+               |  <Add Exp> '-' <Mult Exp>
+               |  <Mult Exp> 
+
+<Mult Exp>    ::= <Mult Exp> '*' <Negate Exp> 
+               |  <Mult Exp> '/' <Negate Exp> 
+               |  <Negate Exp> 
+
+<Negate Exp>  ::= '-' <Value> 
+               |  <Value> 
+
+!Add more values to the rule below - as needed
+<GPIO Registers>
+::= R0 | R1 | R2 | R3 | R4 | R5 | R6 | R7
+
+<Internal CPU Registers>
+::= <ACCUMULATORS> | PC | SP | IR | BP
+ 
+<ACCUMULATORS>
+::= <ACC8LOW>|<ACC8HI>|<ACC16>|<ACC32>
+ 
+<ACC8LOW>
+::= AL
+ <ACC8HI>
+::= AH
+ <ACC16>
+::= AX
+ <ACC32>
+::= EAX
+
+<Value>       ::= <Numeric>
+               |  '(' <Expression> ')'
+               
+<Numeric>       ::= IntNum | BinaryNum | HexNum
