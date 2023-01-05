@@ -70,7 +70,7 @@ enum_from_primitive! {
 pub enum RecordEntry {
     Empty,
     Byte(u8),
-    Bool(bool),
+    Bool(u8),
     Integer(u16),
     String(WString<LE>),
 }
@@ -79,6 +79,12 @@ impl RecordEntry {
     pub fn byte(&self) -> u8 {
         match self {
             RecordEntry::Byte(b) => *b,
+            _ => panic!("RecordEntry::byte() {:?}", self)
+        }
+    }
+    pub fn bool(&self) -> u8 {
+        match self {
+            RecordEntry::Bool(b) => *b,
             _ => panic!()
         }
     }

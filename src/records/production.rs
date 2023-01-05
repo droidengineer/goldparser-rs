@@ -23,5 +23,16 @@ pub struct ProductionRecord {
 }
 
 impl ProductionRecord {
-    const CODE: u8 = 82; //'R';
+    pub fn new(index: u16, nonterminal: u16, symbol_idx: Vec<u16>) -> Self {
+        ProductionRecord { index, nonterminal, reserved: 0, symbol_idx }
+    }
 }
+
+impl std::fmt::Display for ProductionRecord {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let disp = format!("@{:04X} Head Index: {} Extra: {:?}",
+            self.index, self.nonterminal, self.symbol_idx);
+        write!(f,"{}", disp)
+    }
+}
+

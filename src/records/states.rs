@@ -44,19 +44,40 @@ pub struct DFAStateRecord {
     pub accept_idx: u16,
     /// This field is reserved for future use
     pub reserved: u8,
-    /// 
+    /// See `DFAEdge`
     pub edges: Vec<DFAEdge>,
 }
 impl DFAStateRecord {
-    const CODE: u8 = 68; //'D';
+    pub fn new(index: u16, accept: u8, accept_idx: u16, edges: Vec<DFAEdge>) -> Self {
+        DFAStateRecord { index, accept, accept_idx, reserved: 0, edges } 
+    }
+
 }
 
+impl std::fmt::Display for DFAStateRecord {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let disp = format!("@{:04X} accept state: {} accept index: {} Edges: {:?}",
+            self.index, self.accept, self.accept_idx, self.edges);
+        write!(f,"{}", disp)
+    }
+}
+
+
+#[derive(Debug)]
 /// * Each edge contains a series of characters that are used to determine whether the Deterministic Finite Automata 
 /// will follow it. The actual set of valid characters is not stored in this field, but, rather, an index in the 
 /// `CharacterSetTable`.
 /// * Target Index 	Integer 	Each edge is linked to state in the DFA Table. This field contains the index of that state.
 /// * (Reserved) 	Empty 	This field is reserved for future use.
-pub struct DFAEdge(u16,u16,u8);
+pub struct DFAEdge {
+    /// Each edge contains a series of characters that are used to determine whether the Deterministic Finite Automata will follow it. 
+    /// The actual set of valid characters is not stored in this field, but, rather, an index in the Character Set Table
+    pub index: u16,
+    /// Each edge is linked to state in the DFA Table. This field contains the index of that state
+    pub target_idx: u16,
+    /// Reserved for future use
+    pub reserved: u8,
+}
 
 /// Each record describing a state in the LALR State Table is preceded by a byte field containing the value 76 
 /// - the ASCII code for "L". The file will contain one of these records for each state in the table. The 
@@ -74,9 +95,19 @@ pub struct LALRSateRecord {
     pub actions: Vec<LALRAction>,
 }
 impl LALRSateRecord {
-    const CODE: u8 = 68; // 'D'
+    pub fn new(index: u16, actions: Vec<LALRAction>) -> Self {
+        LALRSateRecord { index, reserved: 0, actions } 
+    }}
+
+impl std::fmt::Display for LALRSateRecord {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let disp = format!("@{:04X} Actions: {:?}",self.index, self.actions);
+        write!(f,"{}", disp)
+    }
 }
 
+
+#[derive(Debug)]
 pub struct LALRAction {
     /// Contains the index in the `SymbolTable`
     pub index: u16,
@@ -88,13 +119,18 @@ pub struct LALRAction {
     pub reserved: u8,
 }
 
-pub enum ActionType {
-    /// This action indicates the symbol is to be shifted. The Target field will contain the index of the state in the LALR State table that the parsing engine will advance to.
-    Shift = 1,
-    /// This action denotes that the parser can reduce a rule. The Target field will contain the index of the rule in the `RuleTable`.
-    Reduce = 2,
-    /// This action is used when a rule is reduced and the parser jumps to the state that represents the shifted nonterminal. The Target field will contain the index of the state in the `LALRStateTable` that the parsing engine will jump to after a reduction if completed.
-    Goto = 3,
-    /// When the parser encounters the `Accept` action for a given symbol, the source text is accepted as correct and complete. In this case, the Target field is not needed and should be ignored.
-    Accept = 4,
+
+
+enum_from_primitive! {
+    #[derive(Debug)]
+    pub enum ActionType {
+        /// This action indicates the symbol is to be shifted. The Target field will contain the index of the state in the LALR State table that the parsing engine will advance to.
+        Shift = 1,
+        /// This action denotes that the parser can reduce a rule. The Target field will contain the index of the rule in the `RuleTable`.
+        Reduce = 2,
+        /// This action is used when a rule is reduced and the parser jumps to the state that represents the shifted nonterminal. The Target field will contain the index of the state in the `LALRStateTable` that the parsing engine will jump to after a reduction if completed.
+        Goto = 3,
+        /// When the parser encounters the `Accept` action for a given symbol, the source text is accepted as correct and complete. In this case, the Target field is not needed and should be ignored.
+        Accept = 4,
+    }
 }

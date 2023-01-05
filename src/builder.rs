@@ -8,7 +8,7 @@ use std::{ffi::OsString, fs::File, io::Read,};
 use enum_primitive::FromPrimitive;
 use utf16string::{WString, LE, WStr, Utf16Error, BE};
 
-use crate::{records::{LogicalRecord, RecordType, EntryType, RecordEntry, property::PropertyRecord, counts::TableCountsRecord, states::InitialStatesRecord, charset::CharacterSetTable, symbol::{SymbolTableRecord, SymbolType}}, egt::EnhancedGrammarTable};
+use crate::{records::{LogicalRecord, RecordType, EntryType, RecordEntry, property::PropertyRecord, counts::TableCountsRecord, states::{InitialStatesRecord, DFAEdge, DFAStateRecord, LALRAction, ActionType, LALRSateRecord}, charset::CharacterSetTable, symbol::{SymbolTableRecord, SymbolType}, production::ProductionRecord}, egt::EnhancedGrammarTable};
 
 
 #[derive(Debug)]
@@ -97,7 +97,7 @@ impl Builder {
                     let i = &record.entries[0];
                     let s = &record.entries[1];
                     let t = &record.entries[2];
-                    if t.integer() < 0 || t.integer() > SymbolType::Error as u16 { panic!("SymbolType out of range."); }
+                    if  t.integer() > SymbolType::Error as u16 { panic!("SymbolType out of range."); }
                     let k = SymbolType::from_u16(t.integer()).expect("Bad Symbol Type");
                     // if let Some(kind) = SymbolType::from_u16(t.integer()) {
                     //     let rec = SymbolTableRecord::new(i.integer(),s.string(),kind);
@@ -108,7 +108,23 @@ impl Builder {
                     egt.symbols.push(rec);
                 },
                 RecordType::Group => todo!(),
-                RecordType::Production => todo!(),
+                RecordType::Production => {
+                    let i = &record.entries[0];
+                    let h = &record.entries[1];
+                    let _empty = &record.entries[2];
+                    let mut r: Vec<u16> = Vec::new();
+                    let mut idx = 3;
+                    while idx < (record.num_entries-1) as usize {
+                        let ex = &record.entries[idx];
+                        r.push(ex.integer());
+                        idx += 1;
+                    }
+                    let rec = ProductionRecord::new(
+                        i.integer(), h.integer(), r
+                    );
+                    println!("{}", rec);
+                    egt.productions.push(rec);
+                },
                 RecordType::InitState => {
                     let d = &record.entries[0];
                     let l = &record.entries[1];
@@ -116,8 +132,46 @@ impl Builder {
                     println!("{}", rec);
                     egt.initial_states = rec;                 
                 },
-                RecordType::DFA => todo!(),
-                RecordType::LALR => todo!(),
+                RecordType::DFA => {
+                    let i = &record.entries[0];
+                    let s = &record.entries[1];
+                    let ai = &record.entries[2];
+                    let _reserved = &record.entries[3];
+                    let mut edges: Vec<DFAEdge> = Vec::new();
+                    let mut idx = 4;
+                    println!("{} DFA[0] {:?} DFA[1] {:?} DFA[2] {:?}",record.num_entries, i, s, ai);
+                    while idx < (record.num_entries - 1) as usize  {
+                        let a = &record.entries[idx];
+                        let b = &record.entries[idx+1];
+                        let _empty = &record.entries[idx+2];
+                        edges.push(DFAEdge { index: a.integer(), target_idx: b.integer(), reserved: 0 });
+                        idx += 3;
+                    }
+                    let rec = DFAStateRecord::new(
+                        i.integer(), s.bool(), ai.integer(), edges
+                    );
+                    println!("{}", rec);
+                    egt.dfa_states.push(rec);        
+                },
+                RecordType::LALR => {
+                    let i = &record.entries[0];
+                    let r = &record.entries[1];
+                    let mut actions: Vec<LALRAction> = Vec::new();
+                    let mut idx = 2;
+                    while idx < (record.num_entries - 1) as usize {
+                        let a = &record.entries[idx];
+                        let b = &record.entries[idx+1];
+                        let c = &record.entries[idx+2];
+                        let _ = &record.entries[idx+3];
+                        let at = b.integer();
+                        
+                        actions.push(LALRAction { index: a.integer(), action: ActionType::from_u16(at).unwrap(), target: c.integer(), reserved: 0 });
+                        idx += 4;
+                    }
+                    let rec = LALRSateRecord::new(i.integer(), actions);
+                    println!("{}", rec);
+                    egt.lalr_states.push(rec); 
+                },
             }
         }
 
@@ -190,10 +244,7 @@ impl Builder {
             },
             EntryType::Boolean => {
                 let b = self.read_byte();
-                let mut entry = RecordEntry::Bool(false);
-                if b == 1 {
-                    entry = RecordEntry::Bool(true);
-                }
+                let mut entry = RecordEntry::Bool(b);
                 //println!("@{} => {:?}", self.pos, entry);                      
                 entry
             },
@@ -228,6 +279,9 @@ impl Builder {
     }
     pub fn peek_byte(&self) -> u8 {
         self.bytes[self.pos]
+    }
+    pub fn peek_u16(&self) -> u16 {
+        (self.bytes[self.pos] as u16) | (self.bytes[self.pos+1] as u16) << 8
     }
     pub fn read_u16(&mut self) -> u16 {
     //    println!("read_u16: {} {}", self.bytes[pos], self.bytes[pos+1]);
