@@ -28,14 +28,15 @@ pub mod symbol;
 pub mod group;
 pub mod production;
 pub mod states;
+pub mod token;
 
 pub use self::property::PropertyRecord;
 pub use self::counts::TableCountsRecord;
-pub use self::charset::CharacterSetTable;
-pub use self::symbol::{SymbolTableRecord, SymbolType};
+pub use self::charset::CharacterSetRecord;
+pub use self::symbol::{Symbol, SymbolTableRecord, SymbolType};
 pub use self::group::GroupRecord;
 pub use self::production::ProductionRecord;
-pub use self::states::{InitialStatesRecord, DFAStateRecord, DFAEdge, LALRSateRecord, LALRAction};
+pub use self::states::{InitialStatesRecord, DFAState, DFAEdge, LALRState, LALRAction};
 
 //pub use crate::records::RecordEntry;
 
@@ -93,9 +94,11 @@ impl RecordEntry {
             _ => panic!("RecordEntry::byte() {:?}", self)
         }
     }
-    pub fn bool(&self) -> u8 {
+    pub fn bool(&self) -> bool {
         match self {
-            RecordEntry::Bool(b) => *b,
+            RecordEntry::Bool(b) => {
+                if *b != 0u8 { true } else { false }
+            },
             _ => panic!()
         }
     }

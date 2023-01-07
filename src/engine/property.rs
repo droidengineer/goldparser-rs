@@ -21,7 +21,6 @@ pub struct PropertyRecord {
     pub value: Utf16,
 }
 impl PropertyRecord {
- //   const CODE: u8 = 112; //'p';
     pub fn new(index: u16, name: Utf16, value: Utf16) -> Self {
         PropertyRecord {
             index, name, value

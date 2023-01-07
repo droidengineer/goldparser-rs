@@ -8,7 +8,7 @@ use std::{ffi::OsString, fs::File, io::Read,};
 use enum_primitive::FromPrimitive;
 use utf16string::{WString, LE, WStr, Utf16Error, BE};
 
-use crate::{engine::{LogicalRecord, RecordType, EntryType, RecordEntry, property::PropertyRecord, counts::TableCountsRecord, states::{InitialStatesRecord, DFAEdge, DFAStateRecord, LALRAction, ActionType, LALRSateRecord}, charset::CharacterSetTable, symbol::{SymbolTableRecord, SymbolType}, production::ProductionRecord}, egt::EnhancedGrammarTable};
+use crate::{engine::{LogicalRecord, RecordType, EntryType, RecordEntry, property::PropertyRecord, counts::TableCountsRecord, states::{InitialStatesRecord, DFAEdge, DFAState, LALRAction, ActionType, LALRState}, charset::CharacterSetRecord, symbol::{SymbolTableRecord, SymbolType}, production::ProductionRecord}, egt::EnhancedGrammarTable};
 
 
 #[derive(Debug)]
@@ -87,7 +87,7 @@ impl Builder {
                         r.push((*a, b.integer()));
                         idx += 2;
                     }
-                    let rec = CharacterSetTable::new(
+                    let rec = CharacterSetRecord::new(
                         i.integer(), u.integer(), c.integer(), r
                     );
                     println!("{}", rec);
@@ -142,10 +142,10 @@ impl Builder {
                         let a = &record.entries[idx];
                         let b = &record.entries[idx+1];
                         let _empty = &record.entries[idx+2];
-                        edges.push(DFAEdge { index: a.integer(), target_idx: b.integer(), reserved: 0 });
+                        edges.push(DFAEdge { index: a.integer(), target_state_idx: b.integer()});
                         idx += 3;
                     }
-                    let rec = DFAStateRecord::new(
+                    let rec = DFAState::new(
                         i.integer(), s.bool(), ai.integer(), edges
                     );
                     println!("{}", rec);
@@ -163,10 +163,10 @@ impl Builder {
                         let _ = &record.entries[idx+3];
                         let at = b.integer();
                         
-                        actions.push(LALRAction { index: a.integer(), action: ActionType::from_u16(at).unwrap(), target: c.integer(), reserved: 0 });
+                        actions.push(LALRAction { index: a.integer(), action: ActionType::from_u16(at).unwrap(), target: c.integer() });
                         idx += 4;
                     }
-                    let rec = LALRSateRecord::new(i.integer(), actions);
+                    let rec = LALRState::new(i.integer(), actions);
                     println!("{}", rec);
                     egt.lalr_states.push(rec); 
                 },

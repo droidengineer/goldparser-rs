@@ -6,11 +6,11 @@ use crate::{builder::Builder,
     engine::{
         property::PropertyRecord, 
         counts::TableCountsRecord, 
-        charset::CharacterSetTable, 
-        symbol::SymbolTableRecord, 
+        charset::CharacterSetRecord, 
+        Symbol, 
         group::GroupRecord, 
         production::ProductionRecord, 
-        states::{InitialStatesRecord, DFAStateRecord, LALRSateRecord}, Utf16
+        states::{InitialStatesRecord, DFAState, LALRState}, Utf16
     }
 };
 
@@ -21,13 +21,13 @@ pub struct EnhancedGrammarTable {
     pub header: Utf16,
     pub properties: Vec<PropertyRecord>,
     pub counts: Vec<TableCountsRecord>,
-    pub charset: Vec<CharacterSetTable>,
-    pub symbols: Vec<SymbolTableRecord>,
+    pub charset: Vec<CharacterSetRecord>,
+    pub symbols: Vec<Symbol>,
     pub groups: Vec<GroupRecord>,
     pub productions: Vec<ProductionRecord>,
     pub initial_states: InitialStatesRecord,
-    pub dfa_states: Vec<DFAStateRecord>,
-    pub lalr_states: Vec<LALRSateRecord>,
+    pub dfa_states: Vec<DFAState>,
+    pub lalr_states: Vec<LALRState>,
 }
 
 impl EnhancedGrammarTable {

@@ -8,7 +8,7 @@ use std::str::FromStr;
 use std::num::ParseIntError;
 
 use crate::egt::EnhancedGrammarTable;
-use crate::engine::LALRSateRecord;
+use crate::engine::LALRState;
 
 // named!(int8 <&str, Result<i8, ParseIntError>>,
 //     map!(number, FromStr::from_str));
@@ -62,7 +62,7 @@ pub struct GOLDParser {
     comment_level: usize,
     current_line: usize,
 
-    curr_lalr_state: LALRSateRecord,
+    curr_lalr_state: LALRState,
     trim_reductions: bool,
 }
 

@@ -7,10 +7,12 @@
 use regex::Regex;
 use utf16string::{WString, LE};
 
-pub use SymbolTableRecord as Symbol;
+//pub use SymbolTableRecord as Symbol;
+
+use super::Utf16;
 
 enum_from_primitive! {
-    #[derive(Debug,Clone,Copy)]
+    #[derive(Debug,Clone,Copy,PartialEq,Eq)]
     #[repr(u16)]
     pub enum SymbolType {
         Undefined,
@@ -25,7 +27,7 @@ enum_from_primitive! {
     }
 }
 impl SymbolType {
-    pub fn to_wstring(&self) -> String {
+    pub fn format(&self) -> String {
         match self {
             SymbolType::NonTerminal => format!("<{{}}>"),
             SymbolType::Terminal => {
@@ -35,6 +37,7 @@ impl SymbolType {
         }
     }
 }
+
 
 #[derive(Debug)]
 /// Each record describing a symbol in the Symbol Table is preceded by a byte containing 
@@ -52,12 +55,15 @@ pub struct SymbolTableRecord {
 
 impl SymbolTableRecord {
     pub fn new(index: u16, name: WString<LE>, kind: SymbolType) -> Self {
-        //let k = SymbolType::from_u16(kind);
         SymbolTableRecord { index, name, kind }
     }
+    pub fn name(&self) -> String {
+        self.name.to_string()
+    }
 
-    
 }
+
+
 
 /// Text representation of the symbol.
 /// * non-terminals: <name>
@@ -75,5 +81,37 @@ impl std::fmt::Display for SymbolTableRecord {
 
             _ => write!(f, "({})", self.name.to_string())
         }
+    }
+}
+
+// SymbolTable
+pub struct Symbol {
+    pub index: usize,
+    pub name: String,
+    pub kind: SymbolType
+}
+
+impl Symbol {
+    const QUOTE_CHARS: &str = "|+*?()[]{}<>!";
+
+    pub fn quote(&self, src: Utf16) -> String {
+        let source = src.to_string();
+        if source.contains(Self::QUOTE_CHARS) {
+            format!("'{}'", source)
+        } else {
+            source
+        }
+    }
+}
+
+impl From<SymbolTableRecord> for Symbol {
+    fn from(value: SymbolTableRecord) -> Self {
+        todo!()
+    }
+}
+
+impl PartialEq for Symbol {
+    fn eq(&self, other: &Self) -> bool {
+        self.index == other.index && self.name == other.name && self.kind == other.kind
     }
 }

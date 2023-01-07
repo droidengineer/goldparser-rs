@@ -2,7 +2,6 @@ mod engine;
 mod builder;
 mod egt;
 mod parser;
-mod token;
 
 #[macro_use] extern crate enum_primitive;
 extern crate num_traits;

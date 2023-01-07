@@ -3,7 +3,9 @@
 //! 
 //! http://goldparser.org/doc/egt/record-initial-states.htm
 
+use std::ops::Deref;
 
+use super::Symbol;
 
 /// The `InitialStateRecord` only occurs once in the `EnhancedGrammarTable` file. 
 /// It will contain the initial states for both the DFA and LALR algorithms.  
@@ -27,34 +29,37 @@ impl std::fmt::Display for InitialStatesRecord {
     }
 }
 
+/// *Represents a state in the Deterministic Finite Automaton which is used by the tokenizer.*
+/// 
 /// Each record describing a state in the `DFAStateTable` is preceded by a byte field containing the value 68 
 /// - the ASCII code for "D". The file will contain one of these records for each state in the table. The 
-/// `TableCountsRecord`, which precedes any `DFAStateRecord`, will contain the total number of states.
+/// `TableCountsRecord`, which precedes any `DFAState`, will contain the total number of states.
 /// The record contains information about the state itself: where it is located in the DFA State table and 
 /// what symbols can be accepted (if any). Following this, there is a series of fields which describe each 
 /// edge of the states. A DFA state can contain 0 or more edges, or links, to other states in the Table. 
 /// These are organized in groups of 3 and will constitute the rest of the record.
 /// http://goldparser.org/doc/egt/record-dfa-state.htm
-pub struct DFAStateRecord {
-    /// This parameter holds the index of the DFA state in the DFA State Table
+pub struct DFAState {
+    /// This parameter holds the index of the DFA state in the `DFAStateTable`
     pub index: u16,
-    /// Each DFA state can accept one of the grammar's terminal symbols. If the state accepts a terminal symbol, the value will be set to True and the Accept Index parameter will contain the symbol's index
-    pub accept: u8,
-    /// If the state accepts a terminal symbol, this field will contain the symbol's index in the Symbol Table. Otherwise, the value in this field should be ignored
+    /// Each `DFAState` can accept one of the grammar's terminal symbols. If the state accepts a 
+    /// terminal symbol, the value will be set to True and the `accept_idx` parameter will contain 
+    /// the symbol's index
+    pub accept: bool,
+    /// If the state accepts a terminal symbol, this field will contain the symbol's index in the 
+    /// `SymbolTable`. Otherwise, the value in this field should be ignored
     pub accept_idx: u16,
-    /// This field is reserved for future use
-    pub reserved: u8,
     /// See `DFAEdge`
     pub edges: Vec<DFAEdge>,
 }
-impl DFAStateRecord {
-    pub fn new(index: u16, accept: u8, accept_idx: u16, edges: Vec<DFAEdge>) -> Self {
-        DFAStateRecord { index, accept, accept_idx, reserved: 0, edges } 
+impl DFAState {
+    pub fn new(index: u16, accept: bool, accept_idx: u16, edges: Vec<DFAEdge>) -> Self {
+        DFAState { index, accept, accept_idx, edges } 
     }
+    //pub fn find_edge(&self, )
 
 }
-
-impl std::fmt::Display for DFAStateRecord {
+impl std::fmt::Display for DFAState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let disp = format!("@{:04X} accept state: {} accept index: {} Edges: {:?}",
             self.index, self.accept, self.accept_idx, self.edges);
@@ -62,23 +67,22 @@ impl std::fmt::Display for DFAStateRecord {
     }
 }
 
-
 #[derive(Debug)]
-/// * Each edge contains a series of characters that are used to determine whether the Deterministic Finite Automata 
-/// will follow it. The actual set of valid characters is not stored in this field, but, rather, an index in the 
-/// `CharacterSetTable`.
-/// * Target Index 	Integer 	Each edge is linked to state in the DFA Table. This field contains the index of that state.
-/// * (Reserved) 	Empty 	This field is reserved for future use.
+/// *Used to represent an edge*
+/// 
+/// Each state in the **DFA** contains multiple edges which link to other states in the automata
+/// * `index` is index into `CharacterSetTable`
+/// * `target_state_idx` 
 pub struct DFAEdge {
     /// Each edge contains a series of characters that are used to determine whether the Deterministic Finite Automata will follow it. 
     /// The actual set of valid characters is not stored in this field, but, rather, an index in the 
-    /// Character Set Table
+    /// `CharacterSetTable`
     pub index: u16,
     /// Each edge is linked to state in the DFA Table. This field contains the index of that state
-    pub target_idx: u16,
-    /// Reserved for future use
-    pub reserved: u8,
+    pub target_state_idx: u16,
 }
+
+//---------------------------[LALRState]
 
 /// Each record describing a state in the LALR State Table is preceded by a byte field containing the value 76 
 /// - the ASCII code for "L". The file will contain one of these records for each state in the table. The 
@@ -87,25 +91,32 @@ pub struct DFAEdge {
 /// A LALR State contains a series of actions that are performed based on the next token. The record mostly 
 /// consists of a series of fields (in groups of 4) which describe each of these actions.
 /// http://goldparser.org/doc/egt/record-lalr-state.htm
-pub struct LALRSateRecord {
+pub struct LALRState
+ {
     /// This parameter holds the index of the state in the `LALRStateTable`
     pub index: u16,
-    /// Reserved for future use
-    pub reserved: u8,
     /// 1 or more `LALRAction`s
     pub actions: Vec<LALRAction>,
 }
-impl LALRSateRecord {
+impl LALRState
+ {
     pub fn new(index: u16, actions: Vec<LALRAction>) -> Self {
-        LALRSateRecord { index, reserved: 0, actions } 
+        LALRState
+         { index, actions } 
     }
 
-    pub fn find_action(&self) -> Option<LALRAction> {
-        todo!()
+    pub fn find_action(&self, symbol: Symbol) -> Option<LALRAction> {
+        for action in &self.actions {
+            if action.index == symbol.index {
+                return Some(*action)
+            }
+        }
+        None
     }
 }
 
-impl std::fmt::Display for LALRSateRecord {
+impl std::fmt::Display for LALRState
+ {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let disp = format!("@{:04X} Actions: {:?}",self.index, self.actions);
         write!(f,"{}", disp)
@@ -113,27 +124,30 @@ impl std::fmt::Display for LALRSateRecord {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug,Copy,Clone)]
 pub struct LALRAction {
     /// Contains the index in the `SymbolTable`
+    /// Optionally could store copy directly here as `entry: Symbol`
     pub index: u16,
     /// This field contains a value that represents the action that LALR parsing engine is to take based on the symbol. These values are enumerated below
     pub action: ActionType,
     /// Depending on the value of the Action field, the target will hold different types of information
     pub target: u16,
-    /// Reserved for future use
-    pub reserved: u8,
 }
 
 impl LALRAction {
     pub fn new(index: u16, action: ActionType, target: u16) -> Self {
-        LALRAction { index, action, target, reserved: 0 }
+        LALRAction { index, action, target }
     }
+    // #[inline(always)]
+    // pub fn entry(&self) -> &Symbol {
+    //      SymbolTable[index]
+    // }
 }
 
 
 enum_from_primitive! {
-    #[derive(Debug)]
+    #[derive(Debug,Copy,Clone)]
     pub enum ActionType {
         /// This action indicates the symbol is to be shifted. The Target field will contain the index of the state in the LALR State table that the parsing engine will advance to.
         Shift = 1,

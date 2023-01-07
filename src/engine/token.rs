@@ -1,7 +1,7 @@
 //! Token
 //! 
-//! 
-//! 
+//! While the `Symbol` represents an class of terminals and non-terminals, the
+//! `Token` represents an individual piece of information.
 
 use crate::engine::SymbolTableRecord as Symbol;
 use utf16string::{WString, LE};
@@ -19,12 +19,16 @@ use crate::engine::SymbolType;
 /// which can be modified by the developer.
 /// Contains:
 /// * a `Symbol` representing the `Token`'s parent symbol
-/// * a `WString<LE>` 
+/// * a `String` that is UTF-8 and Unicode
 pub struct Token {
+    /// The `Symbol` that generated this `Token`
     pub symbol: Symbol,
-    /// Information stored in the token
-    pub data: WString<LE>,   
-    //pub lalr_state: LALRStateRecord,
+    /// String from the source file that generated this `Token`
+    /// For a `Token` created by reduction, this is empty
+    pub text: String,
+    /// Data associated with this `Token`
+    //pub data: T,
+    //pub lalr_state: LALRState,
 
     /// Column number where the token was read.
     pub col: usize,
@@ -33,10 +37,11 @@ pub struct Token {
 }
 
 impl Token {
-    pub fn new(symbol: Symbol, data: WString<LE>) -> Self {
+    pub fn new(symbol: Symbol, text: String) -> Self {
+        
         Token {
             symbol,
-            data,
+            text,
             col: 0, line: 0,
         }
     }
