@@ -13,10 +13,13 @@
 //! 
 //! http://goldparser.org/doc/egt/structure-record.htm
 
-use std::{ops::Deref, borrow::Borrow};
+use std::ops::Deref;
 
 use enum_primitive::{FromPrimitive, enum_from_primitive};
 use utf16string::{WStr, LE, WString};
+
+//pub use utf16string::WString as WString;
+pub type Utf16 = WString<LE>;
 
 pub mod property;
 pub mod counts;
@@ -25,6 +28,14 @@ pub mod symbol;
 pub mod group;
 pub mod production;
 pub mod states;
+
+pub use self::property::PropertyRecord;
+pub use self::counts::TableCountsRecord;
+pub use self::charset::CharacterSetTable;
+pub use self::symbol::{SymbolTableRecord, SymbolType};
+pub use self::group::GroupRecord;
+pub use self::production::ProductionRecord;
+pub use self::states::{InitialStatesRecord, DFAStateRecord, DFAEdge, LALRSateRecord, LALRAction};
 
 //pub use crate::records::RecordEntry;
 
@@ -53,16 +64,16 @@ enum_from_primitive! {
     #[derive(Debug,Copy,Clone, PartialEq, Eq, Hash)]
     #[repr(u8)]
     pub enum RecordType {
-        Multi = 77, // 'M'
-        Property = 112, // 'P'
-        Counts = 116,   // 't'
-        CharSet = 99,   // 'c'
-        Symbol = 83,    // 'S'
-        Group = 103,    // 'g'
-        Production = 82, // 'R'
-        InitState = 73, // 'I'
-        DFA = 68,       // 'D'
-        LALR = 76,      // 'L'
+        Multi       = 77, // 'M'
+        Property    = 112, // 'p'
+        Counts      = 116,   // 't'
+        CharSet     = 99,   // 'c'
+        Symbol      = 83,    // 'S'
+        Group       = 103,    // 'g'
+        Production  = 82, // 'R'
+        InitState   = 73, // 'I'
+        DFA         = 68,       // 'D'
+        LALR        = 76,      // 'L'
     }
 }
 
@@ -104,6 +115,18 @@ impl RecordEntry {
                 i.to_string() //wstr
             },
             _ => panic!()
+        }
+    }
+    pub fn wstring(&self) -> WString<LE> {
+        match self {
+            RecordEntry::String(i) => {
+                let rets = i.deref().to_string();
+                WString::from(&rets)
+               // let ret = i.clone();
+               // let rret = i.clone_into(&mut ret.clone());
+                //ret.deref().to_string()
+            },
+            _ => panic!("wstring(): error")
         }
     }
 } 

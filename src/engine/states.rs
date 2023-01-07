@@ -71,7 +71,8 @@ impl std::fmt::Display for DFAStateRecord {
 /// * (Reserved) 	Empty 	This field is reserved for future use.
 pub struct DFAEdge {
     /// Each edge contains a series of characters that are used to determine whether the Deterministic Finite Automata will follow it. 
-    /// The actual set of valid characters is not stored in this field, but, rather, an index in the Character Set Table
+    /// The actual set of valid characters is not stored in this field, but, rather, an index in the 
+    /// Character Set Table
     pub index: u16,
     /// Each edge is linked to state in the DFA Table. This field contains the index of that state
     pub target_idx: u16,
@@ -97,7 +98,12 @@ pub struct LALRSateRecord {
 impl LALRSateRecord {
     pub fn new(index: u16, actions: Vec<LALRAction>) -> Self {
         LALRSateRecord { index, reserved: 0, actions } 
-    }}
+    }
+
+    pub fn find_action(&self) -> Option<LALRAction> {
+        todo!()
+    }
+}
 
 impl std::fmt::Display for LALRSateRecord {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -119,6 +125,11 @@ pub struct LALRAction {
     pub reserved: u8,
 }
 
+impl LALRAction {
+    pub fn new(index: u16, action: ActionType, target: u16) -> Self {
+        LALRAction { index, action, target, reserved: 0 }
+    }
+}
 
 
 enum_from_primitive! {

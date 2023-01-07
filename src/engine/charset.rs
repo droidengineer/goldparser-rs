@@ -2,11 +2,14 @@
 //! 
 //! 
 
+pub struct CharacterSet {
+
+    pub ranges: Vec<(u16,u16)>
+}
 
 
 
-
-/// Each record describing a member in the `CharacterSetTable`u is preceded by a byte field 
+/// Each record describing a member in the `CharacterSetTable` is preceded by a byte field 
 /// containing the value 99 - the ASCII value of "c". This table is used by the DFA State Table 
 /// to store the valid characters for each edge in the DFA state machine. The file will contain 
 /// one of these records for each character set used in the table. The `TableCountsRecord`, which 

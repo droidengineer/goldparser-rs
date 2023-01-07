@@ -1,12 +1,32 @@
 [package]
-name = "goldparser_rs"
-version = "0.1.0"
+authors = ["B. Gian James <gian@convolutedsystems.com>"]
+name = "goldparser-rs"
+version = "0.1.1"
+
+description = "Rust engine for the GOLD Builder/Parser Ecosystem"
+repository = "https://github.com/droidengineer/goldparser-rs.git"
+homepage = "https://github.com/droidengineer/goldparser-rs.git"
+readme = "README.md"
+
+keywords = ["parser", "goldparser", "dfa", "lalr", "grammar"]
+categories = ["parsing", "template-engine", "development-tools"]
+license = "MIT"
+
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+# features: cli debug
+
 
 [dependencies]
 utf16string = "0.2.0"
 enum_primitive = "0.1"
 num-traits = "0.2"
+regex = "1.7"
 #rmp = "0.8"
+
+
+#[workspace]
+# members = ["crates/*"]
+#https://matklad.github.io/2021/08/22/large-rust-workspaces.html

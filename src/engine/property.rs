@@ -4,6 +4,8 @@
 
 use utf16string::{WString, LE};
 
+use super::Utf16;
+
 
 
 /// Property records occur at the beginning of the file and contain information
@@ -15,12 +17,12 @@ use utf16string::{WString, LE};
 #[derive(Debug)]
 pub struct PropertyRecord {
     pub index: u16,
-    pub name: String,
-    pub value: String,
+    pub name: Utf16,
+    pub value: Utf16,
 }
 impl PropertyRecord {
  //   const CODE: u8 = 112; //'p';
-    pub fn new(index: u16, name: String, value: String) -> Self {
+    pub fn new(index: u16, name: Utf16, value: Utf16) -> Self {
         PropertyRecord {
             index, name, value
         }
@@ -30,7 +32,7 @@ impl PropertyRecord {
 
 impl std::fmt::Display for PropertyRecord {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let disp = format!("@{:04X} {} = {}",self.index, self.name,self.value);
+        let disp = format!("@{:04X} {} = {}",self.index, self.name.to_utf8(),self.value.to_utf8());
         write!(f,"{}", disp)
     }
 }

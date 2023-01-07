@@ -8,7 +8,7 @@ use std::{ffi::OsString, fs::File, io::Read,};
 use enum_primitive::FromPrimitive;
 use utf16string::{WString, LE, WStr, Utf16Error, BE};
 
-use crate::{records::{LogicalRecord, RecordType, EntryType, RecordEntry, property::PropertyRecord, counts::TableCountsRecord, states::{InitialStatesRecord, DFAEdge, DFAStateRecord, LALRAction, ActionType, LALRSateRecord}, charset::CharacterSetTable, symbol::{SymbolTableRecord, SymbolType}, production::ProductionRecord}, egt::EnhancedGrammarTable};
+use crate::{engine::{LogicalRecord, RecordType, EntryType, RecordEntry, property::PropertyRecord, counts::TableCountsRecord, states::{InitialStatesRecord, DFAEdge, DFAStateRecord, LALRAction, ActionType, LALRSateRecord}, charset::CharacterSetTable, symbol::{SymbolTableRecord, SymbolType}, production::ProductionRecord}, egt::EnhancedGrammarTable};
 
 
 #[derive(Debug)]
@@ -52,8 +52,8 @@ impl Builder {
                     let v = &record.entries[2];
                     let r = PropertyRecord::new(
                         i.integer(),
-                        n.string(),
-                        v.string(),
+                        n.wstring(),
+                        v.wstring(),
                     );
                     println!("{}", r);
                     egt.properties.push(r);
@@ -99,10 +99,8 @@ impl Builder {
                     let t = &record.entries[2];
                     if  t.integer() > SymbolType::Error as u16 { panic!("SymbolType out of range."); }
                     let k = SymbolType::from_u16(t.integer()).expect("Bad Symbol Type");
-                    // if let Some(kind) = SymbolType::from_u16(t.integer()) {
-                    //     let rec = SymbolTableRecord::new(i.integer(),s.string(),kind);
-                    // }
-                    let rec = SymbolTableRecord::new(i.integer(),s.string(),k);
+
+                    let rec = SymbolTableRecord::new(i.integer(),s.wstring(),k);
 
                     println!("{}", rec);
                     egt.symbols.push(rec);
@@ -299,14 +297,14 @@ impl Builder {
 
 
 #[cfg(test)]
-mod test {
+pub mod test {
     use core::panic;
     use std::{path::PathBuf, fs::File, io::Read, borrow::Borrow};
 
     use enum_primitive::FromPrimitive;
     use utf16string::WString;
 
-    use crate::records::{RecordType, LogicalRecord, EntryType, RecordEntry};
+    use crate::engine::{RecordType, LogicalRecord, EntryType, RecordEntry};
 
     use super::Builder;
 
@@ -405,7 +403,7 @@ mod test {
         println!("Logical Record: {:#?}", lrec);
     }
 
-    fn gen_builder() -> Builder {
+    pub fn gen_builder() -> Builder {
         let file = PathBuf::from(FILE_NAME);
         let bldr = Builder::new(file.into_os_string());
         bldr
