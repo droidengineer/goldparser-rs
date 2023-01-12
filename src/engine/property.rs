@@ -2,8 +2,6 @@
 //! 
 //! 
 
-use utf16string::{WString, LE};
-
 use super::Utf16;
 
 
@@ -16,12 +14,12 @@ use super::Utf16;
 /// This may include more information about the grammar and/or user-defined meta-data.
 #[derive(Debug)]
 pub struct PropertyRecord {
-    pub index: u16,
-    pub name: Utf16,
-    pub value: Utf16,
+    pub index: usize,
+    pub name: String,
+    pub value: String,
 }
 impl PropertyRecord {
-    pub fn new(index: u16, name: Utf16, value: Utf16) -> Self {
+    pub fn new(index: usize, name: String, value: String) -> Self {
         PropertyRecord {
             index, name, value
         }
@@ -31,7 +29,7 @@ impl PropertyRecord {
 
 impl std::fmt::Display for PropertyRecord {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let disp = format!("@{:04X} {} = {}",self.index, self.name.to_utf8(),self.value.to_utf8());
+        let disp = format!("@{:04X} {} = {}",self.index, self.name,self.value);
         write!(f,"{}", disp)
     }
 }

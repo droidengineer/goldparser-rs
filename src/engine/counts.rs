@@ -4,6 +4,7 @@
 
 
 
+#[derive(Default)]
 /// This is a single record that will be stored before any records containing information about 
 /// symbols, sets, rules or state table information.
 pub struct TableCountsRecord {

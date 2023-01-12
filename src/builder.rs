@@ -3,20 +3,33 @@
 //! Use this module to build an `EGT` from a binary .egt file
 //! Can be converted directly to a `EGT`
 
-use std::{ffi::OsString, fs::File, io::Read,};
+use std::{ffi::OsString, fs::File, io::Read, ops::{Range, RangeInclusive},};
 
 use enum_primitive::FromPrimitive;
 use utf16string::{WString, LE, WStr, Utf16Error, BE};
 
-use crate::{engine::{LogicalRecord, RecordType, EntryType, RecordEntry, property::PropertyRecord, counts::TableCountsRecord, states::{InitialStatesRecord, DFAEdge, DFAState, LALRAction, ActionType, LALRState}, charset::CharacterSetRecord, symbol::{SymbolTableRecord, SymbolType}, production::ProductionRecord}, egt::EnhancedGrammarTable};
-
+use crate::{
+    engine::{LogicalRecord, RecordType, EntryType, RecordEntry, 
+        property::PropertyRecord, 
+        counts::TableCountsRecord, 
+        states::{InitialStatesRecord, DFAEdge, DFAState, LALRAction, ActionType, LALRState}, 
+        charset::CharacterSet, 
+        symbol::{Symbol, SymbolType}, 
+        production::ProductionRule, 
+        tables::Table,
+    }, 
+    egt::EnhancedGrammarTable
+};
 
 #[derive(Debug)]
 /// The `Builder`
 pub struct Builder {
+    /// The raw bytes from the EGT file
     bytes: Vec<u8>,
     pos: usize,
+    /// After initialization, collection of `LogicalRecord`s decoded from `bytes`
     records: Vec<LogicalRecord>,
+    initialized: bool,
 }
 
 impl Builder {
@@ -32,146 +45,162 @@ impl Builder {
             bytes: buf,
             pos: 0,
             records: Vec::new(),
+            initialized: false,
         }
     }
 
+
     pub fn to_egt(&mut self) -> EnhancedGrammarTable {
-        assert!(self.pos == self.bytes.len());
+        //assert!(self.pos == self.bytes.len());
+        if !self.initialized { self.init(); }
+        assert!(self.initialized);
 
         let header = self.read_header();
-        let mut egt = EnhancedGrammarTable::new(header);
-
-        for record in &self.records {
+        let mut egt = EnhancedGrammarTable::new(header.to_string());
+        //let records = self.records;
+        for record in &self.records { //self.records.as_slice() {
             println!("{:?}", record.kind);
             match record.kind {
                 RecordType::Multi => panic!(),
                 RecordType::Property => {
-                //for e in &record.entries  {
-                    let i = &record.entries[0];
-                    let n = &record.entries[1];
-                    let v = &record.entries[2];
-                    let r = PropertyRecord::new(
-                        i.integer(),
-                        n.wstring(),
-                        v.wstring(),
-                    );
+                    let index = record.entries[0].as_usize();
+                    let name = record.entries[1].string();
+                    let value = record.entries[2].string();
+                    let r = PropertyRecord::new(index,name,value);
                     println!("{}", r);
-                    egt.properties.push(r);
+                    //egt.properties[index] = r;
+                    egt.properties.insert(index, r);
                     //println!("");
-                //}
                 },
                 RecordType::Counts => {
-                    let s = &record.entries[0];
-                    let c = &record.entries[1];
-                    let r = &record.entries[2];
-                    let d = &record.entries[3];
-                    let l = &record.entries[4];
-                    let g = &record.entries[5];
-                    let rec = TableCountsRecord::new(
-                        s.integer(), c.integer(), r.integer(),
-                        d.integer(), l.integer(), g.integer()
-                    );
+                    let s = record.entries[0].integer();
+                    let c = record.entries[1].integer();
+                    let r = record.entries[2].integer();
+                    let d = record.entries[3].integer();
+                    let l = record.entries[4].integer();
+                    let g = record.entries[5].integer();
+                    let rec = TableCountsRecord::new(s,c,r,d,l,g);
                     println!("{}", rec);
-                    egt.counts.push(rec);
+                    egt.counts = rec;
+                    // sets up our random access through arrays here
+                    egt.resize();
                 },
                 RecordType::CharSet => {
-                    let i = &record.entries[0];
-                    let u = &record.entries[1];
-                    let c = &record.entries[2];
-                    let empty = &record.entries[3];
-                    let mut r: Vec<(u16,u16)> = Vec::new();
+                    let i = record.entries[0].as_usize();  // index of this charset in CharacterSetTable
+                    let _u = record.entries[1].integer();    // unicode plane
+                    let c = record.entries[2].as_usize();   // number of ranges in this charset
+                    let _empty = &record.entries[3];
+                    //let mut r: Vec<(u16,u16)> = Vec::new();
+                    let mut r: Vec<RangeInclusive<u16>> = Vec::new();
                     let mut idx: usize = 4;
-                    for _ in 0..c.integer() {
-                        let a = &record.entries[idx].integer();
-                        let b = &record.entries[idx+1];
-                        r.push((*a, b.integer()));
+                    for _ in 0..c {
+                        let a = record.entries[idx].integer();
+                        let b = record.entries[idx+1].integer();
+                        r.push(RangeInclusive::new(a,b));
                         idx += 2;
                     }
-                    let rec = CharacterSetRecord::new(
-                        i.integer(), u.integer(), c.integer(), r
-                    );
-                    println!("{}", rec);
-                    egt.charset.push(rec);
+                    // let rec = CharacterSetRecord::new(
+                    //     i.integer(), u.integer(), c.integer(), r
+                    // );
+                    let rec = CharacterSet::new(r);
+                    println!("{:?}", rec);
+                    //egt.charset[i] = rec;
+                    egt.charset.add(i,rec);
                 },
                 RecordType::Symbol => {
-                    let i = &record.entries[0];
-                    let s = &record.entries[1];
-                    let t = &record.entries[2];
-                    if  t.integer() > SymbolType::Error as u16 { panic!("SymbolType out of range."); }
-                    let k = SymbolType::from_u16(t.integer()).expect("Bad Symbol Type");
+                    let index = record.entries[0].as_usize();
+                    let s = record.entries[1].string();
+                    let t = record.entries[2].integer();
+                    //if  index > SymbolType::Error as usize { panic!("SymbolType out of range."); }
+                    let k = SymbolType::from_u16(t).expect("Bad Symbol Type");
 
-                    let rec = SymbolTableRecord::new(i.integer(),s.wstring(),k);
+                    let rec = Symbol::new(index,s,k);
 
                     println!("{}", rec);
-                    egt.symbols.push(rec);
+                    egt.symbols.add(index, rec);
                 },
                 RecordType::Group => todo!(),
                 RecordType::Production => {
-                    let i = &record.entries[0];
-                    let h = &record.entries[1];
+                    let index = record.entries[0].as_usize();
+                    let h = record.entries[1].as_usize();
                     let _empty = &record.entries[2];
-                    let mut r: Vec<u16> = Vec::new();
+                    //let mut r: Vec<u16> = Vec::new();
+                    let mut symbols: Vec<Symbol> = Vec::new();
                     let mut idx = 3;
                     while idx < (record.num_entries-1) as usize {
-                        let ex = &record.entries[idx];
-                        r.push(ex.integer());
+                        let ex = record.entries[idx].as_usize();
+                        let sym = egt.symbols[ex].clone();
+                        symbols.push(sym);
                         idx += 1;
                     }
-                    let rec = ProductionRecord::new(
-                        i.integer(), h.integer(), r
-                    );
-                    println!("{}", rec);
-                    egt.productions.push(rec);
+                    // let rec = ProductionRecord::new(
+                    //     i.integer(), h.integer(), r
+                    // );
+                    let head = egt.symbols[h].clone();
+                    let rec = ProductionRule::new(index,head,symbols);
+                    //println!("{:?}", rec);
+                    //egt.productions.insert(index, rec);
+                    egt.productions[index] = rec;
                 },
                 RecordType::InitState => {
-                    let d = &record.entries[0];
-                    let l = &record.entries[1];
-                    let rec = InitialStatesRecord::new(d.integer(), l.integer());
+                    let dfa = record.entries[0].integer();
+                    let lalr = record.entries[1].integer();
+                    let rec = InitialStatesRecord::new(dfa,lalr);
                     println!("{}", rec);
                     egt.initial_states = rec;                 
                 },
                 RecordType::DFA => {
-                    let i = &record.entries[0];
-                    let s = &record.entries[1];
-                    let ai = &record.entries[2];
+                    let state_idx = record.entries[0].as_usize(); // index of this DFAState in DFAStateTable
+                    let accepts_symbol = record.entries[1].bool(); // accept state
+                    let ai = record.entries[2].as_usize(); // index into symbol table for accept symbol
                     let _reserved = &record.entries[3];
                     let mut edges: Vec<DFAEdge> = Vec::new();
                     let mut idx = 4;
-                    println!("{} DFA[0] {:?} DFA[1] {:?} DFA[2] {:?}",record.num_entries, i, s, ai);
+                    //println!("{} DFA[0] {:?} DFA[1] {:?} DFA[2] {:?}",record.num_entries, i, s, ai);
                     while idx < (record.num_entries - 1) as usize  {
-                        let a = &record.entries[idx];
-                        let b = &record.entries[idx+1];
+                        let a = record.entries[idx].as_usize();   // this edge's characterset index in CharacterSetTable
+                        let b = record.entries[idx+1].as_usize(); // index of target state symbol
                         let _empty = &record.entries[idx+2];
-                        edges.push(DFAEdge { index: a.integer(), target_state_idx: b.integer()});
+                        let chars = egt.charset[a].clone();
+                        edges.push(DFAEdge { chars, target_state: b});
                         idx += 3;
                     }
+                    let mut sym: Symbol = Symbol::default();
+                    if accepts_symbol {
+                        sym = egt.symbols[ai].clone();
+                    }
                     let rec = DFAState::new(
-                        i.integer(), s.bool(), ai.integer(), edges
+                        state_idx, accepts_symbol, sym, edges
                     );
                     println!("{}", rec);
-                    egt.dfa_states.push(rec);        
+                    //egt.dfa_states.insert(state_idx, rec);  
+                    egt.dfa_states[state_idx] = rec;      
                 },
                 RecordType::LALR => {
-                    let i = &record.entries[0];
-                    let r = &record.entries[1];
+                    // Let's make an LALRState
+                    let index = record.entries[0].as_usize(); // index into LALRStateTable for this state
+                    let _empty = &record.entries[1];
                     let mut actions: Vec<LALRAction> = Vec::new();
                     let mut idx = 2;
+                    // Add any actions associated with this state
                     while idx < (record.num_entries - 1) as usize {
-                        let a = &record.entries[idx];
-                        let b = &record.entries[idx+1];
-                        let c = &record.entries[idx+2];
-                        let _ = &record.entries[idx+3];
-                        let at = b.integer();
-                        
-                        actions.push(LALRAction { index: a.integer(), action: ActionType::from_u16(at).unwrap(), target: c.integer() });
+                        let a = record.entries[idx].as_usize(); // symbol index
+                        let b = record.entries[idx+1].integer();   // action
+                        let c = record.entries[idx+2].as_usize();  // target index
+                        let _ = &record.entries[idx+3]; // empty
+                        let symbol = egt.symbols[a].clone();
+                        let action = ActionType::from_u16(b).unwrap();
+                        actions.push(LALRAction { symbol, action, target_idx: c });
                         idx += 4;
                     }
-                    let rec = LALRState::new(i.integer(), actions);
+                    let rec = LALRState::new(index, actions);
                     println!("{}", rec);
-                    egt.lalr_states.push(rec); 
+                    //egt.lalr_states.insert(index, rec); 
+                    egt.lalr_states[index] = rec;
                 },
             }
         }
+        // validate egt (table counts, etc)
 
         egt
     }
@@ -192,7 +221,7 @@ impl Builder {
             self.records.push(lrec);
         }
         println!("Total Records: {} Entries: {}", self.records.len(), entries);
-
+        self.initialized = true;
     }
 
     /// Call after consuming byte 77 ('M') in stream.
@@ -338,6 +367,7 @@ pub mod test {
     fn init() {
         let mut bldr = gen_builder();
         bldr.init();
+
     }
     #[test]
     fn to_egt() {
@@ -345,6 +375,9 @@ pub mod test {
         bldr.init();
 
         let egt = bldr.to_egt();
+        assert_eq!(egt.header,"GOLD Parser Tables/v5.0");
+        println!("--------------------------------------------");
+        //println!("{}",egt);
     }
     #[test]
     fn read_logical_record() {

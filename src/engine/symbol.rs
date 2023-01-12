@@ -2,9 +2,8 @@
 //! 
 //! 
 
-//use enum_primitive::FromPrimitive;
+use std::{fmt::Display, ops::{Index, IndexMut}};
 
-use regex::Regex;
 use utf16string::{WString, LE};
 
 //pub use SymbolTableRecord as Symbol;
@@ -12,12 +11,13 @@ use utf16string::{WString, LE};
 use super::Utf16;
 
 enum_from_primitive! {
-    #[derive(Debug,Clone,Copy,PartialEq,Eq)]
+    #[derive(Debug,Default,Clone,Copy,PartialEq,Eq)]
     #[repr(u16)]
     pub enum SymbolType {
+        #[default]
         Undefined,
         NonTerminal,    // normal nonterminal
-        Terminal,       // normal terminal
+        Terminal,       // normal terminal (content passed to the parser)
         Noise,          // Noise terminal. These are ignored by the parser. Comments and whitespace are considered 'noise'.
         EndOfFile,      // End Character - End of File. This symbol is used to represent the end of the file or the end of the source input.
         GroupStart,     // Lexical group start
@@ -33,18 +33,19 @@ impl SymbolType {
             SymbolType::Terminal => {
                 format!("\'{{}}\'")
             },
+            SymbolType::EndOfFile => format!("{{EOF}}"),
             _ => format!("({{}})")
         }
     }
 }
 
 
-#[derive(Debug)]
+/// #[derive(Debug)]
 /// Each record describing a symbol in the Symbol Table is preceded by a byte containing 
 /// the value 83 - the ASCII value of "S". The file will contain one of these records for 
 /// each symbol in the grammar. The Table Count record, which precedes any symbol records, 
 /// will contain the total number of symbols.
-pub struct SymbolTableRecord {
+/* pub struct SymbolTableRecord {
     /// Index of symbol in `GOLDParser` 's `SymbolTableRecord`
     pub index: u16,
     /// Name of the symbol as character or string
@@ -64,12 +65,7 @@ impl SymbolTableRecord {
 }
 
 
-
-/// Text representation of the symbol.
-/// * non-terminals: <name>
-/// * special terminals: (name)
-/// * terminals: 'name'
-impl std::fmt::Display for SymbolTableRecord {
+impl Display for SymbolTableRecord {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.kind {
             SymbolType::NonTerminal => write!(f, "<{}>", self.name.to_string()),
@@ -82,17 +78,25 @@ impl std::fmt::Display for SymbolTableRecord {
             _ => write!(f, "({})", self.name.to_string())
         }
     }
-}
+} */
 
+#[derive(Debug,Default,Clone)]
 // SymbolTable
 pub struct Symbol {
+    // DEPRECATED
     pub index: usize,
+    /// Name of the symbol as character or string
     pub name: String,
+    /// Class of symbols this symbol belongs to   
     pub kind: SymbolType
 }
 
 impl Symbol {
     const QUOTE_CHARS: &str = "|+*?()[]{}<>!";
+
+    pub fn new(index: usize, name: String, kind: SymbolType) -> Self {
+        Symbol { index, name, kind }
+    }
 
     pub fn quote(&self, src: Utf16) -> String {
         let source = src.to_string();
@@ -104,9 +108,21 @@ impl Symbol {
     }
 }
 
-impl From<SymbolTableRecord> for Symbol {
-    fn from(value: SymbolTableRecord) -> Self {
-        todo!()
+
+/// Text representation of the symbol.
+/// * non-terminals: <name>
+/// * special terminals: (name)
+/// * terminals: 'name'
+impl Display for Symbol {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self.kind {
+            SymbolType::NonTerminal => write!(f, "<{}>", self.name.to_string()),
+            SymbolType::Terminal => {
+                write!(f, "\'{}\'", self.name.to_string())
+            },
+
+            _ => write!(f, "({})", self.name.to_string())
+        }
     }
 }
 
@@ -114,4 +130,18 @@ impl PartialEq for Symbol {
     fn eq(&self, other: &Self) -> bool {
         self.index == other.index && self.name == other.name && self.kind == other.kind
     }
+}
+
+
+
+
+#[cfg(test)]
+pub mod test {
+
+
+    #[test]
+    fn symbol() {
+
+    }
+
 }

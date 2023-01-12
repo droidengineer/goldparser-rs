@@ -3,9 +3,9 @@
 //! 
 //! http://goldparser.org/doc/egt/record-initial-states.htm
 
-use std::ops::Deref;
+use std::{ops::{Deref, Index}, fmt::Display};
 
-use super::Symbol;
+use super::{Symbol, CharacterSet, tables::Table};
 
 /// The `InitialStateRecord` only occurs once in the `EnhancedGrammarTable` file. 
 /// It will contain the initial states for both the DFA and LALR algorithms.  
@@ -29,6 +29,7 @@ impl std::fmt::Display for InitialStatesRecord {
     }
 }
 
+#[derive(Debug,Default,Clone)]
 /// *Represents a state in the Deterministic Finite Automaton which is used by the tokenizer.*
 /// 
 /// Each record describing a state in the `DFAStateTable` is preceded by a byte field containing the value 68 
@@ -41,33 +42,45 @@ impl std::fmt::Display for InitialStatesRecord {
 /// http://goldparser.org/doc/egt/record-dfa-state.htm
 pub struct DFAState {
     /// This parameter holds the index of the DFA state in the `DFAStateTable`
-    pub index: u16,
+    /// DEPRECATED
+    pub index: usize,
     /// Each `DFAState` can accept one of the grammar's terminal symbols. If the state accepts a 
     /// terminal symbol, the value will be set to True and the `accept_idx` parameter will contain 
     /// the symbol's index
     pub accept: bool,
     /// If the state accepts a terminal symbol, this field will contain the symbol's index in the 
     /// `SymbolTable`. Otherwise, the value in this field should be ignored
-    pub accept_idx: u16,
+    pub accept_symbol: Symbol,
     /// See `DFAEdge`
     pub edges: Vec<DFAEdge>,
 }
 impl DFAState {
-    pub fn new(index: u16, accept: bool, accept_idx: u16, edges: Vec<DFAEdge>) -> Self {
-        DFAState { index, accept, accept_idx, edges } 
+    pub fn new(index: usize, accept: bool, accept_symbol: Symbol, edges: Vec<DFAEdge>) -> Self {
+        // The edges still contain indexes for targets
+        DFAState { index, accept, accept_symbol, edges } 
     }
-    //pub fn find_edge(&self, )
+    pub fn find_edge(&self, ch: u16) -> Option<usize> {
+        for edge in &self.edges {
+            if edge.chars.contains(ch) {
+                return Some(edge.target_state);
+            }
+        }
+        None
+    }
 
 }
-impl std::fmt::Display for DFAState {
+impl Display for DFAState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let disp = format!("@{:04X} accept state: {} accept index: {} Edges: {:?}",
-            self.index, self.accept, self.accept_idx, self.edges);
+            self.index, self.accept, self.accept_symbol, self.edges);
         write!(f,"{}", disp)
     }
 }
 
-#[derive(Debug)]
+//#[derive(Debug)]
+
+
+#[derive(Debug,Clone)]
 /// *Used to represent an edge*
 /// 
 /// Each state in the **DFA** contains multiple edges which link to other states in the automata
@@ -77,13 +90,16 @@ pub struct DFAEdge {
     /// Each edge contains a series of characters that are used to determine whether the Deterministic Finite Automata will follow it. 
     /// The actual set of valid characters is not stored in this field, but, rather, an index in the 
     /// `CharacterSetTable`
-    pub index: u16,
+    pub chars: CharacterSet,
     /// Each edge is linked to state in the DFA Table. This field contains the index of that state
-    pub target_state_idx: u16,
+    pub target_state: usize, //DFAState,
+}
+impl DFAEdge {
 }
 
 //---------------------------[LALRState]
 
+#[derive(Debug,Default)]
 /// Each record describing a state in the LALR State Table is preceded by a byte field containing the value 76 
 /// - the ASCII code for "L". The file will contain one of these records for each state in the table. The 
 /// `TableCountsRecord`, which precedes any LALR records, will contain the total number of states.
@@ -94,68 +110,102 @@ pub struct DFAEdge {
 pub struct LALRState
  {
     /// This parameter holds the index of the state in the `LALRStateTable`
-    pub index: u16,
+    /// DEPRECATED
+    pub index: usize,
     /// 1 or more `LALRAction`s
     pub actions: Vec<LALRAction>,
 }
 impl LALRState
  {
-    pub fn new(index: u16, actions: Vec<LALRAction>) -> Self {
-        LALRState
-         { index, actions } 
+    pub fn new(index: usize, actions: Vec<LALRAction>) -> Self {
+        LALRState { index, actions } 
     }
 
-    pub fn find_action(&self, symbol: Symbol) -> Option<LALRAction> {
+    pub fn find_action(&self, symbol: Symbol) -> Option<&LALRAction> {
         for action in &self.actions {
-            if action.index == symbol.index {
-                return Some(*action)
+            if action.symbol == symbol {
+                return Some(action)
             }
         }
         None
     }
 }
 
-impl std::fmt::Display for LALRState
+impl Display for LALRState
  {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let disp = format!("@{:04X} Actions: {:?}",self.index, self.actions);
+        let actions = self.actions.as_slice();
+        let str : Vec<String> = actions.into_iter()
+            .map(|a| format!("{}",a))
+            .collect();
+        let disp = format!("@{:04X} LALRState[{}] Actions: {:?}",self.index, self.index, str.iter());
         write!(f,"{}", disp)
     }
 }
 
 
-#[derive(Debug,Copy,Clone)]
+#[derive(Debug,Clone)]
 pub struct LALRAction {
     /// Contains the index in the `SymbolTable`
     /// Optionally could store copy directly here as `entry: Symbol`
-    pub index: u16,
-    /// This field contains a value that represents the action that LALR parsing engine is to take based on the symbol. These values are enumerated below
+    pub symbol: Symbol,
+    /// This field contains a value that represents the action that LALR parsing engine is 
+    /// to take based on the symbol. These values are enumerated below
     pub action: ActionType,
-    /// Depending on the value of the Action field, the target will hold different types of information
-    pub target: u16,
+    /// Depending on the value of the Action field, the target will hold different types 
+    /// of information: action{Shift,Goto} `LALRStateTable[target]`
+    /// action{Reduce} `RuleTable[target]`
+    pub target_idx: usize,
 }
 
 impl LALRAction {
-    pub fn new(index: u16, action: ActionType, target: u16) -> Self {
-        LALRAction { index, action, target }
+    pub fn new(symbol: Symbol, action: ActionType, target_idx: usize) -> Self {
+        LALRAction { symbol, action, target_idx }
     }
-    // #[inline(always)]
-    // pub fn entry(&self) -> &Symbol {
-    //      SymbolTable[index]
+    // pub fn target(&self) -> Option<impl Table> {
+    //     match self.action {
+    //         ActionType::Shift |
+    //         ActionType::Goto => lalrstatetable[self.target_idx],
+    //     }
     // }
+    
+}
+impl Display for LALRAction
+ {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut target = String::new();
+        match self.action {
+            ActionType::Goto |
+            ActionType::Shift => target = format!("LALRStateTable[{}]",self.target_idx),
+            ActionType::Reduce => target = format!("RuleTable[{}]",self.target_idx),
+            _ => target.push_str("<ignored>"),
+        }
+        let disp = format!("symbol: {} action: {:?} target: {}",
+            self.symbol,self.action,target);
+        write!(f,"{}", disp)
+    }
 }
 
-
 enum_from_primitive! {
-    #[derive(Debug,Copy,Clone)]
+    #[derive(Debug,Default,Copy,Clone)]
     pub enum ActionType {
-        /// This action indicates the symbol is to be shifted. The Target field will contain the index of the state in the LALR State table that the parsing engine will advance to.
+        #[default]
+        Undefined,
+        /// This action indicates the symbol is to be shifted. 
+        /// The Target field will contain the index of the state in the `LALRStateTable` that
+        /// the parsing engine will advance to.
         Shift = 1,
-        /// This action denotes that the parser can reduce a rule. The Target field will contain the index of the rule in the `RuleTable`.
+        /// This action denotes that the parser can reduce a rule. 
+        /// The Target field will contain the index of the rule in the `RuleTable`.
         Reduce = 2,
-        /// This action is used when a rule is reduced and the parser jumps to the state that represents the shifted nonterminal. The Target field will contain the index of the state in the `LALRStateTable` that the parsing engine will jump to after a reduction if completed.
+        /// This action is used when a rule is reduced and the parser jumps to the state
+        ///  that represents the shifted nonterminal. The Target field will contain the 
+        /// index of the state in the `LALRStateTable` that the parsing engine will jump 
+        /// to after a reduction if completed.
         Goto = 3,
-        /// When the parser encounters the `Accept` action for a given symbol, the source text is accepted as correct and complete. In this case, the Target field is not needed and should be ignored.
+        /// When the parser encounters the `Accept` action for a given symbol, the source 
+        /// text is accepted as correct and complete. In this case, the Target field is not 
+        /// needed and should be ignored.
         Accept = 4,
     }
 }

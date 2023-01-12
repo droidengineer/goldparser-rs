@@ -3,10 +3,11 @@
 //! While the `Symbol` represents an class of terminals and non-terminals, the
 //! `Token` represents an individual piece of information.
 
-use crate::engine::SymbolTableRecord as Symbol;
-use utf16string::{WString, LE};
+//use utf16string::{WString, LE};
 
 use crate::engine::SymbolType;
+
+use super::{Position, Symbol};
 
 #[derive(Debug)]
 /// Used to represent and organized parsed data.
@@ -29,11 +30,8 @@ pub struct Token {
     /// Data associated with this `Token`
     //pub data: T,
     //pub lalr_state: LALRState,
-
-    /// Column number where the token was read.
-    pub col: usize,
-    /// Line number where the token was read.
-    pub line: usize,
+    /// `Position` 
+    pub pos: Position,
 }
 
 impl Token {
@@ -42,20 +40,20 @@ impl Token {
         Token {
             symbol,
             text,
-            col: 0, line: 0,
+            pos: Position::default(),
         }
     }
     #[inline(always)]
-    pub fn kind(&self) -> SymbolType {
-        self.symbol.kind
+    pub fn kind(&self) -> &SymbolType {
+        &self.symbol.kind
     }
     #[inline(always)]
-    pub fn name(&self) -> String {
-        self.symbol.name.to_utf8()
+    pub fn name(&self) -> &String {
+        &self.symbol.name
     }
     #[inline(always)]
     pub fn text(&self) -> String {
-        self.symbol.to_string()
+        self.text.clone()
     }
 
 

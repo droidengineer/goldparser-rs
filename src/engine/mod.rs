@@ -21,6 +21,8 @@ use utf16string::{WStr, LE, WString};
 //pub use utf16string::WString as WString;
 pub type Utf16 = WString<LE>;
 
+pub mod stack;
+pub mod tables;
 pub mod property;
 pub mod counts;
 pub mod charset;
@@ -30,15 +32,17 @@ pub mod production;
 pub mod states;
 pub mod token;
 
-pub use self::property::PropertyRecord;
-pub use self::counts::TableCountsRecord;
-pub use self::charset::CharacterSetRecord;
-pub use self::symbol::{Symbol, SymbolTableRecord, SymbolType};
-pub use self::group::GroupRecord;
-pub use self::production::ProductionRecord;
-pub use self::states::{InitialStatesRecord, DFAState, DFAEdge, LALRState, LALRAction};
-
+pub use stack::Stack;
+pub use property::PropertyRecord;
+pub use counts::TableCountsRecord;
+pub use charset::{CharacterSet};
+pub use symbol::{Symbol, SymbolType};
+pub use group::LexicalGroup;
+pub use production::{ProductionRule};
+pub use states::{InitialStatesRecord, DFAState, DFAEdge, LALRState, LALRAction};
+pub use tables::{SymbolTable};
 //pub use crate::records::RecordEntry;
+//pub use self::Position;
 
 enum_from_primitive! {
     #[derive(Debug,Copy,Clone, PartialEq, Eq, Hash)]
@@ -108,6 +112,8 @@ impl RecordEntry {
             _ => panic!()
         }
     }
+    #[inline(always)]
+    pub fn as_usize(&self) -> usize { self.integer() as usize }
     pub fn string(&self) -> String {
         match self {
             RecordEntry::String(i) =>  {
@@ -148,4 +154,24 @@ impl LogicalRecord {
             entries: Vec::new(),
         }
     }
+}
+
+#[derive(Default,Debug)]
+pub struct Position(usize,usize);
+impl Position {
+    /// Column number where the token was read.
+    pub fn col(&self) -> usize { self.1 }
+    /// Line number where the token was read.
+    pub fn line(&self) -> usize { self.0 }
+    pub fn set(&mut self, pos: Position) {
+        self.0 = pos.0;
+        self.1 = pos.1;
+    }
+    pub fn inc_col(&mut self) { self.1 += 1; }
+    pub fn inc_line(&mut self) { self.0 += 1; self.1 = 1; }
+
+    pub fn to_string(&self) -> String {
+        format!(" [{}, {}]", self.line(), self.col())
+    }
+
 }
