@@ -9,7 +9,7 @@ use crate::engine::SymbolType;
 
 use super::{Position, Symbol};
 
-#[derive(Debug)]
+#[derive(Debug,Default,Clone)]
 /// Used to represent and organized parsed data.
 /// Unlike `SymbolTableRecord`s, which are used to represent a category of terminals and
 /// non-terminals, a `Token` represents instances of those symbols. For instance, the 

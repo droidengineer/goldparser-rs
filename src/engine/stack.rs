@@ -63,6 +63,11 @@ impl<T: fmt::Debug> Stack<T> {
     pub fn as_slice(&self) -> &[T] {
         self.0.as_slice()
     }
+
+    pub fn clear(&mut self) {
+        self.0.clear();
+    }
+    pub fn len(&self) -> usize { self.0.len() }
 }
 
 

@@ -28,13 +28,16 @@ pub trait Table {
     //fn contains_key(&self, name: String) -> bool;
 
     /// Retrieve a reference to a value stored in the table by key.
-    fn get(&self, name: String) -> Option<&Self::Item>;
+    fn get(&self, item: Self::Item) -> Option<&Self::Item>;
 
     /// Get number of entries
     fn len(&self) -> usize;
 
     /// Resize to fixed size
     fn resize(&mut self, sz: usize);
+
+    /// Clear all items and reset
+    fn clear(&mut self);
 
 }
 
@@ -58,10 +61,29 @@ impl SymbolTable {
             }).next();
         buf
     }
+    pub fn get(&self, name: String) -> Option<&Symbol> {
+        for sym in &self.0 {
+            if sym.name == name { return Some(sym) }
+        }
+        // for sym in self.0.as_slice() {
+        //     if sym.name == name { return Some(&sym);}
+        // }
+        None
+    }
+    // gets 1st occurance of `SymbolType` in the table
+    pub fn get_by_type(&self, kind: SymbolType) -> Option<&Symbol> {
+        for sym in &self.0 {
+            if sym.kind == kind { return Some(sym) }
+        }
+        None
+    }
 }
 impl Table for SymbolTable {
     type Item = Symbol;
 
+    fn clear(&mut self) {
+        self.0.clear();
+    }
     fn add(&mut self, index: usize, item: Self::Item) {
         //self.0.insert(symbol.index, symbol); // this shifts elements
         self.0[index] = item;
@@ -74,13 +96,10 @@ impl Table for SymbolTable {
     fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
-    fn get(&self, name: String) -> Option<&Self::Item> {
+    fn get(&self, item: Self::Item) -> Option<&Self::Item> {
         for sym in &self.0 {
-            if sym.name == name { return Some(sym) }
+            if *sym == item { return Some(sym) }
         }
-        // for sym in self.0.as_slice() {
-        //     if sym.name == name { return Some(&sym);}
-        // }
         None
     }
 
@@ -134,7 +153,7 @@ impl Table for LRStateTable {
     fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
-    fn get(&self, name: String) -> Option<&Self::Item> {
+    fn get(&self, item: Self::Item) -> Option<&Self::Item> {
         todo!()
     }
     fn len(&self) -> usize {
@@ -143,15 +162,11 @@ impl Table for LRStateTable {
     fn resize(&mut self, sz: usize) {
         self.0.resize_with(sz, || {Self::Item::default()})
     }
+    fn clear(&mut self) {
+        self.0.clear();
+    }
 }
-// impl Index<LALRState> for LRStateTable {
-//     type Output = LALRState;
 
-//     fn index(&self, index: LALRState) -> &Self::Output {
-//         let i = index.index;
-//         &self.0[i]
-//     }
-// }
 impl Index<usize> for LRStateTable {
     type Output = LALRState;
 
@@ -169,13 +184,7 @@ impl DFAStateTable {
         self.0.insert(i, state);
     }
 }
-// impl Index<DFAState> for DFAStateTable {
-//     type Output = DFAState;
 
-//     fn index(&self, index: DFAState) -> &Self::Output {
-//         &self.0[index.index]
-//     }
-// }
 impl Index<usize> for DFAStateTable {
     type Output = DFAState;
 
@@ -184,7 +193,33 @@ impl Index<usize> for DFAStateTable {
     }
 }
 
+impl Table for DFAStateTable {
+    type Item = DFAState;
 
+    fn add(&mut self, index: usize, state: Self::Item) {
+        //self.0.insert(index, state);
+        self.0[index] = state;
+    }
+    fn insert(&mut self, name: String, value: Self::Item) {
+        let i = value.index;
+        self.0[i] = value;
+    }
+    fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+    fn get(&self, item: Self::Item) -> Option<&Self::Item> {
+        todo!()
+    }
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+    fn resize(&mut self, sz: usize) {
+        self.0.resize_with(sz, || {Self::Item::default()})
+    }
+    fn clear(&mut self) {
+        self.0.clear();
+    }
+}
 
 #[derive(Debug)]
 /// CharacterSetTable
@@ -199,6 +234,10 @@ impl CharacterSetTable {
     pub fn resize(&mut self, sz: usize) {
         self.0.resize(sz, CharacterSet::default())
     }
+    pub fn contains(&self, charset: CharacterSet) -> bool {
+        self.0.contains(&charset)
+    }
+
 }
 
 impl Index<usize> for CharacterSetTable {
@@ -206,6 +245,11 @@ impl Index<usize> for CharacterSetTable {
     /// charset_table[0]
     fn index(&self, index: usize) -> &CharacterSet {
         &self.0[index]
+    }
+}
+impl IndexMut<usize> for CharacterSetTable {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.0[index]
     }
 }
 
@@ -218,14 +262,7 @@ impl ProductionTable {
         self.0[index] = rule;
     }
 }
-// impl Index<ProductionRule> for ProductionTable {
-//     type Output = ProductionRule;
-//     /// charset_table[0]
-//     fn index(&self, index: ProductionRule) -> &ProductionRule {
-//         let i = index.index;
-//         &self.0[i]
-//     }
-// }
+
 impl Index<usize> for ProductionTable {
     type Output = ProductionRule;
     fn index(&self, index: usize) -> &ProductionRule {
@@ -237,6 +274,40 @@ impl IndexMut<usize> for ProductionTable {
         &mut self.0[index]
     }
 }
+
+impl Table for ProductionTable {
+    type Item = ProductionRule;
+
+    fn add(&mut self, index: usize, item: Self::Item) {
+        self.0[index] = item;
+    }
+
+    fn insert(&mut self, name: String, value: Self::Item) {
+        let index = value.index;
+        self.0[index] = value;
+    }
+
+    fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    fn get(&self, item: Self::Item) -> Option<&Self::Item> {
+        todo!()
+    }
+
+    fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    fn resize(&mut self, sz: usize) {
+        self.0.resize_with(sz,  || ProductionRule::default());
+    }
+
+    fn clear(&mut self) {
+        self.0.clear()
+    }
+}
+
 
 /// GroupTable
 pub struct GroupTable(Vec<LexicalGroup>);

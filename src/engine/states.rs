@@ -59,7 +59,7 @@ impl DFAState {
         // The edges still contain indexes for targets
         DFAState { index, accept, accept_symbol, edges } 
     }
-    pub fn find_edge(&self, ch: u16) -> Option<usize> {
+    pub fn find_edge(&self, ch: char) -> Option<usize> {
         for edge in &self.edges {
             if edge.chars.contains(ch) {
                 return Some(edge.target_state);
@@ -67,6 +67,7 @@ impl DFAState {
         }
         None
     }
+
 
 }
 impl Display for DFAState {
@@ -129,6 +130,11 @@ impl LALRState
         }
         None
     }
+    pub fn clear(&mut self) { self.actions.clear(); }
+    
+    // pub fn get_target(&self, target: &LALRAction) -> impl dyn Table {
+
+    // }
 }
 
 impl Display for LALRState
@@ -208,4 +214,15 @@ enum_from_primitive! {
         /// needed and should be ignored.
         Accept = 4,
     }
+}
+
+
+
+
+
+////////////////////////////////[ TESTING ]
+#[cfg(test)]
+mod test {
+
+
 }

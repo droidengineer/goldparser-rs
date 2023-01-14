@@ -156,7 +156,7 @@ impl LogicalRecord {
     }
 }
 
-#[derive(Default,Debug)]
+#[derive(Default,Debug,Clone,Copy)]
 pub struct Position(usize,usize);
 impl Position {
     /// Column number where the token was read.
@@ -172,6 +172,10 @@ impl Position {
 
     pub fn to_string(&self) -> String {
         format!(" [{}, {}]", self.line(), self.col())
+    }
+    pub fn clear(&mut self) {
+        self.0 = 0;
+        self.1 = 0;
     }
 
 }

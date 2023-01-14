@@ -3,7 +3,7 @@
 //! Use this module to build an `EGT` from a binary .egt file
 //! Can be converted directly to a `EGT`
 
-use std::{ffi::OsString, fs::File, io::Read, ops::{Range, RangeInclusive},};
+use std::{ffi::OsString, fs::File, io::Read, ops::{Range, RangeInclusive}, char::decode_utf16,};
 
 use enum_primitive::FromPrimitive;
 use utf16string::{WString, LE, WStr, Utf16Error, BE};
@@ -82,7 +82,7 @@ impl Builder {
                     let rec = TableCountsRecord::new(s,c,r,d,l,g);
                     println!("{}", rec);
                     egt.counts = rec;
-                    // sets up our random access through arrays here
+                    // sets up our random access through array indexing here
                     egt.resize();
                 },
                 RecordType::CharSet => {
@@ -91,12 +91,17 @@ impl Builder {
                     let c = record.entries[2].as_usize();   // number of ranges in this charset
                     let _empty = &record.entries[3];
                     //let mut r: Vec<(u16,u16)> = Vec::new();
-                    let mut r: Vec<RangeInclusive<u16>> = Vec::new();
+                    let mut r: Vec<RangeInclusive<char>> = Vec::new();
                     let mut idx: usize = 4;
                     for _ in 0..c {
                         let a = record.entries[idx].integer();
                         let b = record.entries[idx+1].integer();
-                        r.push(RangeInclusive::new(a,b));
+                        let v = decode_utf16([a,b])
+                            .map(|r| r.map_err(|e| e.unpaired_surrogate()))
+                            .collect::<Vec<_>>();
+                            let v0 = v[0].unwrap();
+                            let v1 = v[1].unwrap();
+                        r.push(RangeInclusive::new(v0,v1));
                         idx += 2;
                     }
                     // let rec = CharacterSetRecord::new(
