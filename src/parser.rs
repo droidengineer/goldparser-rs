@@ -12,9 +12,10 @@ use std::num::ParseIntError;
 
 use crate::builder::Builder;
 use crate::egt::EnhancedGrammarTable;
-use crate::engine::{LALRState, Stack, Position, Symbol, SymbolType, DFAState};
+use crate::engine::states::ActionType;
+use crate::engine::{LALRState, Stack, Position, Symbol, SymbolType, DFAState, Value};
 use crate::engine::tables::{CharacterSetTable,DFAStateTable,SymbolTable,LRStateTable,ProductionTable, GroupTable, Table};
-use crate::engine::token::Token;
+use crate::engine::token::{Token};
 use crate::source::SourceReader;
 
 
@@ -33,10 +34,6 @@ pub trait GPParser {
             .expect("Unable to read {source}")
     }
 
-    fn symbol_by_type(&self, kind: SymbolType) {
-
-    }
-
     /// Performs a parse action on the input source. This should continue until the grammar
     /// is accepted or an error occurs. See `parse_step()`
     fn parse(&mut self) -> GPMessage;
@@ -46,14 +43,14 @@ pub trait GPParser {
 
     /// Analyzes a `Token` and either:
     /// 1. Makes a single reduction and pushes a complete `Reduction` object on the stack
-    /// 2. Accepts the token and shifts
-    /// 3. Errors and places the expected symbol indices in the tokens list
-    fn parse_token(&mut self, next_token: Token) -> GPMessage;
+    /// 2. Accepts the Token and shifts
+    /// 3. Errors and places the expected symbol indices in the Tokens list
+    fn input_tokens(&mut self, next_Token: &mut Token) -> GPParseResult;
 
     /// Implements the lookahead DFA for the parser's lexer. A `Token` is generated which is used by the
     /// LALR state machine. Takes into account the lexing mode of the parser.
     /// This version uses a `Stack` to manage nested group elements.
-    fn next_token(&mut self) -> Token;
+    fn next_Token(&mut self) -> Token;
 
     /// Returns `count` characters in a string from the lookahead buffer.
     /// These characters are used to create the text stored in a `Token`
@@ -77,7 +74,7 @@ pub trait GPParser {
 pub enum GPMessage {
     #[default]
     Empty,                   //Nothing
-    TokenRead,               //A new token is read
+    TokenRead,               //A new Token is read
     Reduction,               //A rule is reduced
     Accept,                  //Grammar complete
     NotLoadedError,          //No grammar is loaded
@@ -127,7 +124,7 @@ pub struct GOLDParser {
     /// Symbols recognized by the system
     //pub symbols: SymbolTable, // from grammar.symbols
 
-    /// DFA tokenizer/scanner/lexer
+    /// DFA Tokenizer/scanner/lexer
     //pub dfa_states: DFAStateTable, // from grammar.dfa_states as Vec<DFAState>
     //pub charsets: CharacterSetTable, // from grammar.charset
     //lookahead_buf: String,
@@ -205,6 +202,9 @@ impl GOLDParser {
     fn get_dfa_state(&self, index: usize) -> &DFAState {
         &self.grammar.dfa_states[index]
     }
+    fn get_lalr_state(&self, state: usize) -> &LALRState {
+        &self.grammar.lalr_states[state]
+    }
 
     /// Return a single character at `index`. This method will read and fill the
     /// buffer as needed from the `source` buffer.
@@ -240,17 +240,34 @@ impl GPParser for GOLDParser {
         let mut result = GPMessage::Empty;
 
         while !done {
+            // DFA lexer provides a Token
             result = self.parse_step();
             match result {
-                GPMessage::Empty => todo!(),
-                GPMessage::TokenRead => todo!(),
-                GPMessage::Reduction => todo!(),
-                GPMessage::Accept => todo!(),
+                // GPMessage::Empty => todo!(),
+                // GPMessage::TokenRead => todo!(),
+                // GPMessage::Reduction => todo!(),
+                GPMessage::Accept => {
+                    done = true;
+                },
                 GPMessage::NotLoadedError => todo!(),
-                GPMessage::LexicalError => todo!(),
-                GPMessage::SyntaxError => todo!(),
-                GPMessage::GroupError => todo!(),
-                GPMessage::InternalError => todo!(),
+                GPMessage::LexicalError => {
+                    println!("{:?} Lexical Error",self.curr_position);
+                    done = true;
+                },
+                GPMessage::SyntaxError => {
+                    println!("{:?} Syntax error. Expected {}",self.curr_position,self.expected_symbols.to_string());
+                    done = true;
+                },
+                GPMessage::GroupError => {
+                    println!("{:?} Runaway group.",self.curr_position);
+                    done = true;
+                },
+                GPMessage::InternalError => {
+                    println!("{:?} Internal error.",self.curr_position);
+                    done = true;
+                },
+                // all non-error events are handled by calling event procedures
+                _ => { }
             }
         }
         result
@@ -261,23 +278,23 @@ impl GPParser for GOLDParser {
         let mut done = false;
 
         while !done {
-            if self.input_tokens.len() == 0 { // get next token from DFA lexer
-                let token = self.next_token();
-                let kind = token.kind().clone();
-                self.input_tokens.push(token);
+            if self.input_tokens.len() == 0 { // get next Token from DFA lexer
+                let Token = self.next_Token();
+                let kind = Token.kind().clone();
+                self.input_tokens.push(Token);
 
                 // handle case where an unterminated comment block consumes program
                 if kind == SymbolType::EndOfFile && self.group.is_empty() {
                     result = GPMessage::GroupError;
-                } else { // a good token was read
+                } else { // a good Token was read
                     result = GPMessage::TokenRead;
                 }
                 done = true;
             
-            } else { // a token is present and can be parsed
-                let token = self.input_tokens.peek().clone();
-                let kind = token.kind();
-                self.curr_position = token.pos;
+            } else { // a Token is present and can be parsed
+                let mut Token = self.input_tokens.peek().clone();
+                let kind = Token.kind();
+                self.curr_position = Token.pos;
 
                 match kind {
                     SymbolType::Noise => {  // whitespace and other ignorables
@@ -293,28 +310,10 @@ impl GPParser for GOLDParser {
                         result = GPMessage::LexicalError;
                         done = true;
                     },
-                    _ => {  // LALR parsing of the input token
-                        let parsemsg = self.parse_token(token);
+                    _ => {  // LALR parsing of the input Token
+                        let parsemsg = self.input_tokens(&mut Token);
                         match parsemsg {
-                            GPMessage::TokenRead => {
-                                self.input_tokens.pop();
-                            },
-                            GPMessage::Reduction => {
-                                result = GPMessage::Reduction;
-                                done = true;
-                            },
-                            GPMessage::Accept => {
-                                result = GPMessage::Accept;
-                                done = true;    
-                            },
-                            GPMessage::SyntaxError => {
-                                result = GPMessage::SyntaxError;
-                                done = true;
-                            },
-                            GPMessage::InternalError => {
-                                result = GPMessage::InternalError;
-                                done = true;
-                            },
+
 
                             _ => { // fallthru includes reduce/eliminated
                                    // shift, and trim-reduced
@@ -332,12 +331,86 @@ impl GPParser for GOLDParser {
         result
     }
 
-    fn parse_token(&mut self, next_token: Token) -> GPMessage {
-        todo!()
+    fn input_tokens(&mut self, next_Token: &mut Token) -> GPParseResult {
+        let mut result = GPParseResult::Undefined;
+        self.have_reduction = false;
+        let parent_symbol = &next_Token.symbol;
+        let parse_action = self.get_lalr_state(self.curr_state)
+                                            .find_action(parent_symbol)
+                                            .expect("Problems fetching LALRAction from LALRState");
+        match parse_action.action {
+            ActionType::Reduce => {
+                // This section of the algorithm will reduce the rule specified by action.action
+                // Produce a reduction - remove as many Tokens as members in the rule and push
+                // a non-terminal Token
+                let rule = &self.grammar.productions[parse_action.target_idx];
+                let mut head = Token::default();
+                if self.trim_reductions && rule.has_only_nonterminal() {
+                    // The current rule consists of a single non-terminal and can be trimmed from
+                    // the parse tree
+                    head = self.stack.pop();
+                    head.symbol = rule.head();
+                    result = GPParseResult::ReduceTrimmed;
+                } else { // create a new reduction for the current rule
+                    self.have_reduction = true;
+                    let n = rule.symbols.len();
+                    let mut reduce_tokens: Vec<Token> = vec![];
+                    for i in (n-1)..0 {
+                        reduce_tokens[i] = self.stack.pop();
+                    }
+                    head = Token::new(rule.head(), String::default());
+                    head.data = Value::Reduction(reduce_tokens);
+                    result = GPParseResult::Reduce;
+                }
+                // execute GOTO action for the rule that was just reduced
+                // peek at LALR Token stack state to get its index, look the state up,
+                // and find the action corresponding to the rule's head symbol
+                let state_index = self.stack.peek().state();
+                match self.get_lalr_state(state_index)
+                                      .find_action(&rule.head())
+                                      .cloned()
+                {
+                    Some(action) => {
+                        self.curr_state = action.target_idx;
+                        head.lalr_state = action.target_idx;
+                        self.stack.push(head);
+                    }
+                    None => result = GPParseResult::InternalError,
+                }
+
+            },
+            ActionType::Accept => {
+                self.have_reduction = true;
+                result = GPParseResult::Accept;
+            },
+            ActionType::Shift  => {
+                // Shift to target state and push the current Token.
+                self.curr_state = parse_action.target_idx;  //self.get_lalr_state(parse_action.target_idx);
+                next_Token.lalr_state = self.curr_state;
+                self.input_tokens.push(next_Token.clone());
+                result = GPParseResult::Shift;
+            },
+            ActionType::Undefined |
+            ActionType::Goto  => {
+                // Syntax error. Generate a list of expected symbols to report
+                self.expected_symbols.clear();
+                let lrstate = self.get_lalr_state(self.curr_state).actions.clone();
+
+                for action in lrstate {
+                    if action.action == ActionType::Shift {
+                        
+                        self.expected_symbols.add(action.symbol.clone());
+                    }
+                }
+                result = GPParseResult::SyntaxError;
+            },
+        }
+
+        result
     }
 
-    fn next_token(&mut self) -> Token {
-        let mut token = Token::default();
+    fn next_Token(&mut self) -> Token {
+        let mut Token = Token::default();
         let mut curr_state = self.grammar.initial_states.dfa as usize;
         let mut length = 1;
         let mut last_accept_state: i32 = -1;
@@ -349,12 +422,12 @@ impl GPParser for GOLDParser {
             //if let ch = self.lookahead(length) {
             let ch = self.lookahead(length);
             // Checks whether an edge was found from the `curr_state`. If so, the state and
-            // `curr_pos` advances. Else, quit main loop and report token found. If the
-            // last_accept_state is -1, then no match found and the Error token is created.
+            // `curr_pos` advances. Else, quit main loop and report Token found. If the
+            // last_accept_state is -1, then no match found and the Error Token is created.
             match self.get_dfa_state(curr_state).find_edge(ch) {
-                // Checks whether the target state accepts a token. If so, it sets the
+                // Checks whether the target state accepts a Token. If so, it sets the
                 // appropriate variables so when the algorithm is done, it can return the
-                // proper token and number of characters
+                // proper Token and number of characters
                 Some(index) => { 
                     target = index as i32;
                     if self.get_dfa_state(index).accept {
@@ -366,12 +439,12 @@ impl GPParser for GOLDParser {
                 },
                 None => { // no edge found. no target state found.
                     if last_accept_state == -1 { // Lexer doesn't recognize the symbol
-                        token.symbol = self.symbol_by_type(SymbolType::Error).unwrap().clone();
-                        token.text = <GOLDParser as GPParser>::lookahead(self,1);
-                    } else { // create token and read text for token.
+                        Token.symbol = self.symbol_by_type(SymbolType::Error).unwrap().clone();
+                        Token.text = <GOLDParser as GPParser>::lookahead(self,1);
+                    } else { // create Token and read text for Token.
                         // self.text contains the total number of accept characters
-                        token.symbol = self.get_dfa_state(last_accept_state as usize).accept_symbol.clone();
-                        token.text = <GOLDParser as GPParser>::lookahead(&self, last_accept_pos as usize);
+                        Token.symbol = self.get_dfa_state(last_accept_state as usize).accept_symbol.clone();
+                        Token.text = <GOLDParser as GPParser>::lookahead(&self, last_accept_pos as usize);
                     }
                     done = true;
                 }
@@ -379,8 +452,8 @@ impl GPParser for GOLDParser {
 
             
         }
-        token.pos = self.source.pos;
-        token
+        Token.pos = self.source.pos;
+        Token
     }
 
     fn lookahead(&self, count: usize) -> String {

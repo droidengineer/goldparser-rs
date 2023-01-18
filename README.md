@@ -25,7 +25,7 @@ This process is know generally as "parsing" and consists of two distinct parts.
 
   
 
-The first part is the "tokenizer" - also called a "lexer" or "scanner". The tokenizer takes the source text and breaks it into the reserved words, constants, identifiers, and symbols that are defined in the language. These "tokens" are subsequently passed to the actual 'parser' which analyzes the series of tokens and then determines when one of the language's syntax rules is complete.
+The first part is the "Tokenizer" - also called a "lexer" or "scanner". The Tokenizer takes the source text and breaks it into the reserved words, constants, identifiers, and symbols that are defined in the language. These "Tokens" are subsequently passed to the actual 'parser' which analyzes the series of Tokens and then determines when one of the language's syntax rules is complete.
 
   
 
@@ -33,7 +33,7 @@ As these completed rules are "reduced" by the parser, a tree following the langu
 
   
 
-Modern bottom-up parsers use a [Deterministic Finite Automaton (DFA)](https://en.wikipedia.org/wiki/Deterministic_finite_automaton) to implement the tokenizer and a LALR(1) state machine to parse the created tokens. Practically all common parser generators, such as the UNIX standard YACC, use these algorithms.
+Modern bottom-up parsers use a [Deterministic Finite Automaton (DFA)](https://en.wikipedia.org/wiki/Deterministic_finite_automaton) to implement the Tokenizer and a LALR(1) state machine to parse the created Tokens. Practically all common parser generators, such as the UNIX standard YACC, use these algorithms.
 
   
 
@@ -51,7 +51,7 @@ The GOLD Parser Builder performs this task. Information is read from an source g
 
 # Parsers and Parsing
 
-The primary goal a parser is to organize a sequence of tokens based on the rules of a formal language. As the parser accepts a sequence of tokens, it determines, based on this information, when the grammar's respective rules are complete and verifies the syntactic correctness of the token sequence. The end result of the process is a "derivation" which represents the token sequence organized following the rules of the grammar.
+The primary goal a parser is to organize a sequence of Tokens based on the rules of a formal language. As the parser accepts a sequence of Tokens, it determines, based on this information, when the grammar's respective rules are complete and verifies the syntactic correctness of the Token sequence. The end result of the process is a "derivation" which represents the Token sequence organized following the rules of the grammar.
 
 ![Diagram showing parsing flow](http://www.goldparser.org/images/parser.gif)
   
@@ -66,7 +66,7 @@ There are two distinct approaches currently used to implement parsers. Recursive
 
 ## Deterministic Finite Automata
 
-One of the major components of GOLD (and many other parsing systems) is the tokenizer. The goal of the tokenizer (also called a scanner) is to recognize different tokens and pass this information to the parsing algorithm.
+One of the major components of GOLD (and many other parsing systems) is the Tokenizer. The goal of the Tokenizer (also called a scanner) is to recognize different Tokens and pass this information to the parsing algorithm.
 
   
 
@@ -81,15 +81,15 @@ As the name implies, deterministic finite automata are deterministic. This means
 A DFA is commonly represented with a graph. The term "graph" is used quite loosely by other scientific fields. Often, it is refers to a plotted mathematical function or graphical representation of data. In computer science terms, however, a "graph" is simply a collection of nodes connected by edges.
 
   
-Most parser engines, including the GOLD Parsing System, use a DFA to implement the tokenizer. This part of the engine scans the input and determines when and if a series of characters can be recognized as a token.
+Most parser engines, including the GOLD Parsing System, use a DFA to implement the Tokenizer. This part of the engine scans the input and determines when and if a series of characters can be recognized as a Token.
 
   
 The figure to the right is a simple Deterministic Finite Automata that recognizes common identifiers and numbers.![enter image description here](http://www.goldparser.org/images/diagram-dfa.gif) For instance, assume that the input contains the text "gold". From State 1 (the initial state), the DFA moves to State 2 when the "g" is read. For the next three characters, "o", "l" and "d", the DFA continues to loop to State 2.
 
 
-By design, the tokenizer attempts to match the longest series of characters possible before accepting a token. For example: if the tokenizer is reading the characters "count" from the source, it can match the first character "c" as an identifier. It would not be prudent for the tokenizer to report five separate identifiers: "c", "o", "u", "n" and "t".
+By design, the Tokenizer attempts to match the longest series of characters possible before accepting a Token. For example: if the Tokenizer is reading the characters "count" from the source, it can match the first character "c" as an identifier. It would not be prudent for the Tokenizer to report five separate identifiers: "c", "o", "u", "n" and "t".
 
-Each time a token is identified, it is passed to the LALR parse engine and the tokenizer restarts at the initial state.
+Each time a Token is identified, it is passed to the LALR parse engine and the Tokenizer restarts at the initial state.
 
 For more information, please refer to the following:
 
@@ -108,9 +108,9 @@ For more information, please refer to the following:
 
 ## Left-to-Right Derivation Parsing (LR)
 
-LR Parsing, or Left-to-right Right-derivation parsing, uses tables to determine when a rule is complete and when additional tokens must be read from the source string. LR parsers identify substrings which can be reduced to nonterminals. Unlike recursive descent parsers, LR parsers do very little "thinking" at runtime. All decisions are based on the content of the parse tables.
+LR Parsing, or Left-to-right Right-derivation parsing, uses tables to determine when a rule is complete and when additional Tokens must be read from the source string. LR parsers identify substrings which can be reduced to nonterminals. Unlike recursive descent parsers, LR parsers do very little "thinking" at runtime. All decisions are based on the content of the parse tables.
 
-LR parser generators construct these tables by analyzing the grammar and determining all the possible "states" the system can have when parsing. Each state represents a point in the parse process where a number of tokens have been read from the source string and rules are in different states of completion. Each production in a state of completion is called a "configuration" and each state corresponds to a configuration set. Each configuration contains a "cursor" which represents the point where the production is complete.
+LR parser generators construct these tables by analyzing the grammar and determining all the possible "states" the system can have when parsing. Each state represents a point in the parse process where a number of Tokens have been read from the source string and rules are in different states of completion. Each production in a state of completion is called a "configuration" and each state corresponds to a configuration set. Each configuration contains a "cursor" which represents the point where the production is complete.
 
   ![enter image description here](http://www.goldparser.org/images/diagram-lalr-state.gif)
 
@@ -118,11 +118,11 @@ LALR Parsing, or "Lookahead LR parsing", is a variant of LR Parsing which most p
 
 Grammars that can be parsed by the LR algorithm, might not be able to be parsed by the LALR algorithm. However, this is very rarely the case and real-world examples are few. The number of states eliminated by choosing LALR over LR is sometimes huge. The C programming language, for instance, has over 10,000 LR states. LALR drops this number to around 350.
 
-Typically, the LR / LALR parsing algorithms, like deterministic finite automata, are commonly represented by using a graph - albeit a more complex variant. For each token received from the scanner, the LR algorithm can take four different actions: Shift, Reduce, Accept and Goto.
+Typically, the LR / LALR parsing algorithms, like deterministic finite automata, are commonly represented by using a graph - albeit a more complex variant. For each Token received from the scanner, the LR algorithm can take four different actions: Shift, Reduce, Accept and Goto.
 
-For each state, the LR algorithm checks the next token on the input queue against all tokens that expected at that stage of the parse. If the token is expected, it is "shifted". This action represents moving the cursor past the current token. The token is removed form the input queue and pushed onto the parse stack.
+For each state, the LR algorithm checks the next Token on the input queue against all Tokens that expected at that stage of the parse. If the Token is expected, it is "shifted". This action represents moving the cursor past the current Token. The Token is removed form the input queue and pushed onto the parse stack.
 
-A reduce is performed when a rule is complete and ready to be replaced by the single nonterminal it represents. Essentially, the tokens that are part of the rule's handle - the right-hand side of the definition - are popped from the parse stack and replaced by the rule's nonterminal plus additional information including the current state in the LR state machine.
+A reduce is performed when a rule is complete and ready to be replaced by the single nonterminal it represents. Essentially, the Tokens that are part of the rule's handle - the right-hand side of the definition - are popped from the parse stack and replaced by the rule's nonterminal plus additional information including the current state in the LR state machine.
 
 When a rule is reduced, the algorithm jumps to (gotos) the appropriate state representing the reduced nonterminal. This simulates the shifting of a nonterminal in the LR state machine.
 

@@ -122,7 +122,7 @@ impl Builder {
                     let rec = Symbol::new(index,s,k);
 
                     println!("{}", rec);
-                    egt.symbols.add(index, rec);
+                    egt.symbols.add(rec);
                 },
                 RecordType::Group => todo!(),
                 RecordType::Production => {

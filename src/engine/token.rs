@@ -7,7 +7,8 @@
 
 use crate::engine::SymbolType;
 
-use super::{Position, Symbol};
+use super::{Position, Symbol, Value};
+
 
 #[derive(Debug,Default,Clone)]
 /// Used to represent and organized parsed data.
@@ -28,8 +29,8 @@ pub struct Token {
     /// For a `Token` created by reduction, this is empty
     pub text: String,
     /// Data associated with this `Token`
-    //pub data: T,
-    //pub lalr_state: LALRState,
+    pub data: Value,
+    pub lalr_state: usize,
     /// `Position` 
     pub pos: Position,
 }
@@ -40,8 +41,13 @@ impl Token {
         Token {
             symbol,
             text,
+            data: Value::default(),
+            lalr_state: 0,
             pos: Position::default(),
         }
+    }
+    pub fn set_data(&mut self, data: Value) {
+        self.data = data;
     }
     #[inline(always)]
     pub fn kind(&self) -> &SymbolType {
@@ -54,6 +60,10 @@ impl Token {
     #[inline(always)]
     pub fn text(&self) -> String {
         self.text.clone()
+    }
+    #[inline(always)]
+    pub fn state(&self) -> usize {
+        self.lalr_state
     }
 
 

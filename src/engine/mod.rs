@@ -13,7 +13,7 @@
 //! 
 //! http://goldparser.org/doc/egt/structure-record.htm
 
-use std::ops::Deref;
+use std::{ops::Deref, default};
 
 use enum_primitive::{FromPrimitive, enum_from_primitive};
 use utf16string::{WStr, LE, WString};
@@ -41,6 +41,8 @@ pub use group::LexicalGroup;
 pub use production::{ProductionRule};
 pub use states::{InitialStatesRecord, DFAState, DFAEdge, LALRState, LALRAction};
 pub use tables::{SymbolTable};
+
+use self::token::Token;
 //pub use crate::records::RecordEntry;
 //pub use self::Position;
 
@@ -159,9 +161,9 @@ impl LogicalRecord {
 #[derive(Default,Debug,Clone,Copy)]
 pub struct Position(usize,usize);
 impl Position {
-    /// Column number where the token was read.
+    /// Column number where the Token was read.
     pub fn col(&self) -> usize { self.1 }
-    /// Line number where the token was read.
+    /// Line number where the Token was read.
     pub fn line(&self) -> usize { self.0 }
     pub fn set(&mut self, pos: Position) {
         self.0 = pos.0;
@@ -178,4 +180,42 @@ impl Position {
         self.1 = 0;
     }
 
+}
+
+// #[derive(Debug,Clone)]
+// pub struct Value(_);
+
+#[derive(Debug,Clone)]
+pub enum Value {
+    String(String),
+    Reduction(Vec<Token>),
+}
+impl Value {
+    pub fn as_string(&self) -> Option<&String> {
+        // let s = self.into();
+        // s
+        match self {
+            Value::String(s) => Some(s),
+            _ => None,
+        }
+    }
+    pub fn as_reduction(&self) -> Option<&Vec<Token>> {
+        match self {
+            Value::Reduction(r) => Some(r),
+            _ => None,
+        }
+    }
+}
+impl Default for Value {
+    fn default() -> Self {
+        Value::String(String::from(""))
+    }
+}
+impl Into<String> for Value {
+    fn into(self) -> String {
+        match self {
+            Value::String(s) => s,
+            _ => "".to_string(),
+        }
+    }
 }

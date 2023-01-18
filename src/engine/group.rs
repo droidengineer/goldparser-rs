@@ -34,7 +34,7 @@ impl LexicalGroup {
 
 /// `AdvanceMode`
 pub enum AdvanceMode {
-    /// The group will advance a token at a time
+    /// The group will advance a Token at a time
     Token,
     /// The group will advance by one character at a time
     Character,

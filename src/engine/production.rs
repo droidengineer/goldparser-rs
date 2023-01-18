@@ -56,10 +56,11 @@ impl ProductionRule {
     }
     pub fn has_only_nonterminal(&self) -> bool {
         self.symbols.len() == 1 && self.symbols[0].kind == SymbolType::NonTerminal
-    }    
+    }
+    pub fn head(&self) -> Symbol {
+        self.head.clone()
+    }
 }
-
-
 
 impl RuleHandler for ProductionRule {
     fn execute(&self) {

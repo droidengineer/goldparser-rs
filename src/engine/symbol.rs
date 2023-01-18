@@ -23,7 +23,7 @@ enum_from_primitive! {
         GroupStart,     // Lexical group start
         GroupEnd,       // lexical group end
         Deprecated,     // Used as COMMENT_LINE in previous CGT format. Not used in EGT.
-        Error           // error terminal. if the parser encounters an error reading a token, this kind of symbol can be used to differentiate it from other terminal types
+        Error           // error terminal. if the parser encounters an error reading a Token, this kind of symbol can be used to differentiate it from other terminal types
     }
 }
 impl SymbolType {
@@ -107,7 +107,6 @@ impl Symbol {
         }
     }
 }
-
 
 /// Text representation of the symbol.
 /// * non-terminals: <name>

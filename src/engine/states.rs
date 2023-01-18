@@ -30,7 +30,7 @@ impl std::fmt::Display for InitialStatesRecord {
 }
 
 #[derive(Debug,Default,Clone)]
-/// *Represents a state in the Deterministic Finite Automaton which is used by the tokenizer.*
+/// *Represents a state in the Deterministic Finite Automaton which is used by the Tokenizer.*
 /// 
 /// Each record describing a state in the `DFAStateTable` is preceded by a byte field containing the value 68 
 /// - the ASCII code for "D". The file will contain one of these records for each state in the table. The 
@@ -105,7 +105,7 @@ impl DFAEdge {
 /// - the ASCII code for "L". The file will contain one of these records for each state in the table. The 
 /// `TableCountsRecord`, which precedes any LALR records, will contain the total number of states.
 ///
-/// A LALR State contains a series of actions that are performed based on the next token. The record mostly 
+/// A LALR State contains a series of actions that are performed based on the next Token. The record mostly 
 /// consists of a series of fields (in groups of 4) which describe each of these actions.
 /// http://goldparser.org/doc/egt/record-lalr-state.htm
 pub struct LALRState
@@ -122,9 +122,9 @@ impl LALRState
         LALRState { index, actions } 
     }
 
-    pub fn find_action(&self, symbol: Symbol) -> Option<&LALRAction> {
+    pub fn find_action(&self, symbol: &Symbol) -> Option<&LALRAction> {
         for action in &self.actions {
-            if action.symbol == symbol {
+            if action.symbol == *symbol {
                 return Some(action)
             }
         }
@@ -193,7 +193,7 @@ impl Display for LALRAction
 }
 
 enum_from_primitive! {
-    #[derive(Debug,Default,Copy,Clone)]
+    #[derive(Debug,Default,Copy,Clone,PartialEq)]
     pub enum ActionType {
         #[default]
         Undefined,

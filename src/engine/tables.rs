@@ -16,10 +16,10 @@ pub trait Table {
     type Item;
 
     /// Add into an array-like list
-    fn add(&mut self, index: usize, item: Self::Item);
+    fn add(&mut self, item: Self::Item);
 
-    /// Insert a value into the table using a string key.
-    fn insert(&mut self, name: String, value: Self::Item);
+    /// Insert a value into the table using an index
+    fn insert(&mut self, index: usize, value: Self::Item);
 
     /// Is the table empty or not?
     fn is_empty(&self) -> bool;
@@ -84,14 +84,14 @@ impl Table for SymbolTable {
     fn clear(&mut self) {
         self.0.clear();
     }
-    fn add(&mut self, index: usize, item: Self::Item) {
+    fn add(&mut self, item: Self::Item) {
         //self.0.insert(symbol.index, symbol); // this shifts elements
-        self.0[index] = item;
+        let i = item.index;
+        self.0[i] = item;
         //self.0.insert(index, item);
     }
-    fn insert(&mut self, _: String, value: Self::Item) {
-        let i = value.index;
-        self.0[i] = value;
+    fn insert(&mut self, index: usize, value: Self::Item) {
+        self.0[index] = value;
     }
     fn is_empty(&self) -> bool {
         self.0.is_empty()
@@ -144,11 +144,11 @@ impl LRStateTable {
 impl Table for LRStateTable {
     type Item = LALRState;
 
-    fn add(&mut self, index: usize, state: Self::Item) {
-        self.0.insert(index, state);
+    fn add(&mut self, state: Self::Item) {
+        self.0.insert(state.index, state);
     }
-    fn insert(&mut self, name: String, value: Self::Item) {
-        todo!()
+    fn insert(&mut self, index: usize, value: Self::Item) {
+        self.0[index] = value;
     }
     fn is_empty(&self) -> bool {
         self.0.is_empty()
@@ -196,13 +196,12 @@ impl Index<usize> for DFAStateTable {
 impl Table for DFAStateTable {
     type Item = DFAState;
 
-    fn add(&mut self, index: usize, state: Self::Item) {
-        //self.0.insert(index, state);
-        self.0[index] = state;
+    fn add(&mut self, state: Self::Item) {
+        let i = state.index;
+        self.0[i] = state;
     }
-    fn insert(&mut self, name: String, value: Self::Item) {
-        let i = value.index;
-        self.0[i] = value;
+    fn insert(&mut self, index: usize, value: Self::Item) {
+        self.0[index] = value;
     }
     fn is_empty(&self) -> bool {
         self.0.is_empty()
@@ -278,12 +277,12 @@ impl IndexMut<usize> for ProductionTable {
 impl Table for ProductionTable {
     type Item = ProductionRule;
 
-    fn add(&mut self, index: usize, item: Self::Item) {
-        self.0[index] = item;
+    fn add(&mut self, item: Self::Item) {
+        let i = item.index;
+        self.0[i] = item;
     }
 
-    fn insert(&mut self, name: String, value: Self::Item) {
-        let index = value.index;
+    fn insert(&mut self, index: usize, value: Self::Item) {
         self.0[index] = value;
     }
 
