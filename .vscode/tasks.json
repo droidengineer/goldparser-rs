@@ -9,6 +9,7 @@
 			],
 			"group": "build",
 			"label": "rust: cargo build"
-		}
+		},
+	
 	]
 }

@@ -12,7 +12,7 @@
 
 use std::ops::{Index, IndexMut};
 
-use super::{Symbol, SymbolType};
+use super::{Symbol, SymbolType, SymbolTable, tables::Table};
 
 // pub struct ProductionRecord {
 //     /// This parameter holds the index of the rule in the `RuleTable`. The resulting rule should be stored at this Index.
@@ -47,11 +47,11 @@ use super::{Symbol, SymbolType};
 pub struct ProductionRule {
     pub index: usize,
     pub head: Symbol,
-    pub symbols: Vec<Symbol>,
+    pub symbols: SymbolTable, //Vec<Symbol>,
 }
 
 impl ProductionRule {
-    pub fn new(index: usize, head: Symbol, symbols: Vec<Symbol>) -> Self {
+    pub fn new(index: usize, head: Symbol, symbols: SymbolTable) -> Self {
         ProductionRule { index, head, symbols }
     }
     pub fn has_only_nonterminal(&self) -> bool {
@@ -60,10 +60,20 @@ impl ProductionRule {
     pub fn head(&self) -> Symbol {
         self.head.clone()
     }
+    pub fn handle(&self) -> String {
+        self.to_string()
+    }
+    pub fn to_string(&self) -> String {
+        format!("{} ::= {}",self.head,self.handle())
+    }
 }
 
 impl RuleHandler for ProductionRule {
     fn execute(&self) {
+        todo!()
+    }
+
+    fn rule(&self) -> &str {
         todo!()
     }
 }
@@ -73,4 +83,7 @@ impl RuleHandler for ProductionRule {
 pub trait RuleHandler {
 /// This method is called when the parsed program tree is executed. 
     fn execute(&self);
+    /// Returns the grammar rule associated with this `RuleHandler`
+    fn rule(&self) -> &str;
+
 }

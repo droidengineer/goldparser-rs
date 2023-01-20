@@ -1,7 +1,6 @@
 use std::{fmt::Display, collections::HashMap};
 
 use crate::{
-    builder::Builder, 
     engine::{
         property::PropertyRecord, 
         counts::TableCountsRecord, 
@@ -11,6 +10,7 @@ use crate::{
         production::ProductionRule, 
         states::{InitialStatesRecord, DFAState, LALRState},
         tables::{Table, CharacterSetTable},
+        builder::Builder,
     }
 };
 
@@ -99,13 +99,12 @@ impl Display for EnhancedGrammarTable {
 
 #[cfg(test)]
 mod test {
-    use crate::{egt::EnhancedGrammarTable, engine::tables::Table};
-
+    use crate::{engine::{EnhancedGrammarTable, tables::Table, builder::test::gen_builder}};
 
 
     #[test]
     fn from_builder() {
-        let mut bldr = crate::builder::test::gen_builder();
+        let mut bldr = gen_builder();
         bldr.init();
         let egt = bldr.to_egt();
         assert_eq!(egt.header.to_string(),"GOLD Parser Tables/v5.0");

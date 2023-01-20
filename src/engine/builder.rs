@@ -17,8 +17,8 @@ use crate::{
         symbol::{Symbol, SymbolType}, 
         production::ProductionRule, 
         tables::Table,
+        egt::EnhancedGrammarTable, SymbolTable
     }, 
-    egt::EnhancedGrammarTable
 };
 
 #[derive(Debug)]
@@ -130,21 +130,18 @@ impl Builder {
                     let h = record.entries[1].as_usize();
                     let _empty = &record.entries[2];
                     //let mut r: Vec<u16> = Vec::new();
-                    let mut symbols: Vec<Symbol> = Vec::new();
+                    let mut symbols: Vec<Symbol> = Vec::with_capacity(record.num_entries as usize);
                     let mut idx = 3;
                     while idx < (record.num_entries-1) as usize {
                         let ex = record.entries[idx].as_usize();
                         let sym = egt.symbols[ex].clone();
-                        symbols.push(sym);
+                        symbols[ex] = sym;
                         idx += 1;
                     }
-                    // let rec = ProductionRecord::new(
-                    //     i.integer(), h.integer(), r
-                    // );
+
                     let head = egt.symbols[h].clone();
-                    let rec = ProductionRule::new(index,head,symbols);
+                    let rec = ProductionRule::new(index,head,SymbolTable::from(symbols));
                     //println!("{:?}", rec);
-                    //egt.productions.insert(index, rec);
                     egt.productions[index] = rec;
                 },
                 RecordType::InitState => {

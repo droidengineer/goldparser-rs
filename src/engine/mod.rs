@@ -13,7 +13,11 @@
 //! 
 //! http://goldparser.org/doc/egt/structure-record.htm
 
-use std::{ops::Deref, default};
+//#[macro_use] extern crate enum_primitive;
+extern crate num_traits;
+
+
+use std::{ops::Deref, default, time::Instant};
 
 use enum_primitive::{FromPrimitive, enum_from_primitive};
 use utf16string::{WStr, LE, WString};
@@ -31,6 +35,11 @@ pub mod group;
 pub mod production;
 pub mod states;
 pub mod token;
+pub mod reduction;
+pub mod builder;
+pub mod egt;
+pub mod source;
+pub mod parser;
 
 pub use stack::Stack;
 pub use property::PropertyRecord;
@@ -41,6 +50,11 @@ pub use group::LexicalGroup;
 pub use production::{ProductionRule};
 pub use states::{InitialStatesRecord, DFAState, DFAEdge, LALRState, LALRAction};
 pub use tables::{SymbolTable};
+pub use source::SourceReader;
+pub use parser::Parser;
+pub use egt::EnhancedGrammarTable;
+pub use builder::Builder;
+
 
 use self::token::Token;
 //pub use crate::records::RecordEntry;
@@ -189,11 +203,12 @@ impl Position {
 pub enum Value {
     String(String),
     Reduction(Vec<Token>),
+    Bool(bool),
+    Integer(u16),
+    Timestamp(Instant),
 }
 impl Value {
     pub fn as_string(&self) -> Option<&String> {
-        // let s = self.into();
-        // s
         match self {
             Value::String(s) => Some(s),
             _ => None,

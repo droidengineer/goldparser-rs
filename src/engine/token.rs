@@ -23,7 +23,7 @@ use super::{Position, Symbol, Value};
 /// * a `Symbol` representing the `Token`'s parent symbol
 /// * a `String` that is UTF-8 and Unicode
 pub struct Token {
-    /// The `Symbol` that generated this `Token`
+    /// The `Symbol` that generated this `Token`. Sometimes called parent.
     pub symbol: Symbol,
     /// String from the source file that generated this `Token`
     /// For a `Token` created by reduction, this is empty

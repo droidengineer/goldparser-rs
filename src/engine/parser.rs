@@ -7,18 +7,17 @@ use std::collections::HashMap;
 use std::fmt::{Display, write};
 use std::{fs, default};
 use std::path::PathBuf;
-use std::str::FromStr;
 use std::num::ParseIntError;
 
-use crate::builder::Builder;
-use crate::egt::EnhancedGrammarTable;
+use super::egt::EnhancedGrammarTable;
 use crate::engine::states::ActionType;
 use crate::engine::{LALRState, Stack, Position, Symbol, SymbolType, DFAState, Value};
 use crate::engine::tables::{CharacterSetTable,DFAStateTable,SymbolTable,LRStateTable,ProductionTable, GroupTable, Table};
 use crate::engine::token::{Token};
-use crate::source::SourceReader;
+use super::source::SourceReader;
+use super::Builder;
 
-
+/// Trait for exposing granular parsing methods
 pub trait GPParser {
     /// Load the grammar EGT 5.0
     fn load_grammar(grammar: String) -> EnhancedGrammarTable {
@@ -45,12 +44,12 @@ pub trait GPParser {
     /// 1. Makes a single reduction and pushes a complete `Reduction` object on the stack
     /// 2. Accepts the Token and shifts
     /// 3. Errors and places the expected symbol indices in the Tokens list
-    fn input_tokens(&mut self, next_Token: &mut Token) -> GPParseResult;
+    fn parse_tokens(&mut self, input_tokens: &mut Token) -> GPParseResult;
 
     /// Implements the lookahead DFA for the parser's lexer. A `Token` is generated which is used by the
     /// LALR state machine. Takes into account the lexing mode of the parser.
     /// This version uses a `Stack` to manage nested group elements.
-    fn next_Token(&mut self) -> Token;
+    fn input_tokens(&mut self) -> Token;
 
     /// Returns `count` characters in a string from the lookahead buffer.
     /// These characters are used to create the text stored in a `Token`
@@ -96,12 +95,12 @@ pub enum GPParseResult {
 }
 
 #[derive(Debug)]
-pub enum GOLDParserError {
+pub enum ParserError {
     Format(GPMessage),
     ParseIntError(::std::num::ParseIntError),
     ParseFloatError(::std::num::ParseFloatError),
 }
-impl Display for GOLDParserError {
+impl Display for ParserError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "ParserError {:?}", self)  
         //::std::fmt::Debug::fmt(&self, f)
@@ -114,7 +113,7 @@ impl Display for GOLDParserError {
 /// contains the LALR(1) State Machine code, the DFA State Machine code,
 /// character table (used by the DFA algorithm) and all other structures and
 /// methods needed to interact with the developer.
-pub struct GOLDParser {
+pub struct Parser {
     /// The grammar the source is written against
     pub grammar: EnhancedGrammarTable,
     pub source: SourceReader,
@@ -145,7 +144,7 @@ pub struct GOLDParser {
     // Reductions
     expected_symbols: SymbolTable,
     pub have_reduction: bool,
-    trim_reductions: bool,
+    pub trim_reductions: bool,
 
     // Housekeeping
     initialized: bool,
@@ -157,13 +156,11 @@ pub struct GOLDParser {
 
 }
 
-impl GOLDParser {
-    /// Move the grammar loading into new()
+impl Parser {
+    pub const PARSER_NAME: &str = "GOLD Parser Engine";
+    pub const PARSER_VERSION: &str = "5.0.3";
+
     pub fn new(egt: String) -> Self {
-        // let egt_file = PathBuf::from(egt);
-        // let mut egt_bldr = Builder::new(egt_file.into_os_string());
-        // egt_bldr.init();
-        // let grammar = egt_bldr.to_egt();
         let grammar = Self::load_grammar(egt);
         //let source = Self::load_source(src);
 
@@ -171,7 +168,7 @@ impl GOLDParser {
         for rec in &grammar.properties {
             properties.insert(rec.name.to_string(), rec.value.to_string());
         }
-        GOLDParser {
+        Parser {
             grammar,
             source: Default::default(),
             properties,
@@ -212,16 +209,14 @@ impl GOLDParser {
         self.source.lookahead(index)
     }
 
-    fn load_source(&mut self, source: String)  {
-        let src = <GOLDParser as GPParser>::load_source(source);
+    pub fn load_source(&mut self, source: String)  {
+        let src = <Parser as GPParser>::load_source(source);
         self.source.load(src);
         self.initialized = true;
     }
-    // pub fn load_source(&mut self, source: String) {
-    //     self.source = fs::read_to_string(source)
-    //         .expect("Unable to read {source}");
-    //     self.initialized = true;
-    // }
+    pub fn clear(&mut self) {
+        self.reset();
+    }
 
     pub fn symbol_by_name(&self, name: String) -> Option<&Symbol> {
         self.grammar.symbols.get(name)
@@ -232,7 +227,7 @@ impl GOLDParser {
 
 }
 
-impl GPParser for GOLDParser {
+impl GPParser for Parser {
     fn parse(&mut self) -> GPMessage {
         if !self.initialized { return GPMessage::NotLoadedError; }
        
@@ -279,9 +274,9 @@ impl GPParser for GOLDParser {
 
         while !done {
             if self.input_tokens.len() == 0 { // get next Token from DFA lexer
-                let Token = self.next_Token();
-                let kind = Token.kind().clone();
-                self.input_tokens.push(Token);
+                let token = self.input_tokens();
+                let kind = token.kind().clone();
+                self.input_tokens.push(token);
 
                 // handle case where an unterminated comment block consumes program
                 if kind == SymbolType::EndOfFile && self.group.is_empty() {
@@ -292,9 +287,9 @@ impl GPParser for GOLDParser {
                 done = true;
             
             } else { // a Token is present and can be parsed
-                let mut Token = self.input_tokens.peek().clone();
-                let kind = Token.kind();
-                self.curr_position = Token.pos;
+                let mut token = self.input_tokens.peek().clone();
+                let kind = token.kind();
+                self.curr_position = token.pos;
 
                 match kind {
                     SymbolType::Noise => {  // whitespace and other ignorables
@@ -311,7 +306,7 @@ impl GPParser for GOLDParser {
                         done = true;
                     },
                     _ => {  // LALR parsing of the input Token
-                        let parsemsg = self.input_tokens(&mut Token);
+                        let parsemsg = self.parse_tokens(&mut token);
                         match parsemsg {
 
 
@@ -331,10 +326,10 @@ impl GPParser for GOLDParser {
         result
     }
 
-    fn input_tokens(&mut self, next_Token: &mut Token) -> GPParseResult {
+    fn parse_tokens(&mut self, input_tokens: &mut Token) -> GPParseResult {
         let mut result = GPParseResult::Undefined;
         self.have_reduction = false;
-        let parent_symbol = &next_Token.symbol;
+        let parent_symbol = &input_tokens.symbol;
         let parse_action = self.get_lalr_state(self.curr_state)
                                             .find_action(parent_symbol)
                                             .expect("Problems fetching LALRAction from LALRState");
@@ -386,8 +381,8 @@ impl GPParser for GOLDParser {
             ActionType::Shift  => {
                 // Shift to target state and push the current Token.
                 self.curr_state = parse_action.target_idx;  //self.get_lalr_state(parse_action.target_idx);
-                next_Token.lalr_state = self.curr_state;
-                self.input_tokens.push(next_Token.clone());
+                input_tokens.lalr_state = self.curr_state;
+                self.input_tokens.push(input_tokens.clone());
                 result = GPParseResult::Shift;
             },
             ActionType::Undefined |
@@ -405,12 +400,11 @@ impl GPParser for GOLDParser {
                 result = GPParseResult::SyntaxError;
             },
         }
-
         result
     }
 
-    fn next_Token(&mut self) -> Token {
-        let mut Token = Token::default();
+    fn input_tokens(&mut self) -> Token {
+        let mut token = Token::default();
         let mut curr_state = self.grammar.initial_states.dfa as usize;
         let mut length = 1;
         let mut last_accept_state: i32 = -1;
@@ -439,12 +433,12 @@ impl GPParser for GOLDParser {
                 },
                 None => { // no edge found. no target state found.
                     if last_accept_state == -1 { // Lexer doesn't recognize the symbol
-                        Token.symbol = self.symbol_by_type(SymbolType::Error).unwrap().clone();
-                        Token.text = <GOLDParser as GPParser>::lookahead(self,1);
+                        token.symbol = self.symbol_by_type(SymbolType::Error).unwrap().clone();
+                        token.text = <Parser as GPParser>::lookahead(self,1);
                     } else { // create Token and read text for Token.
                         // self.text contains the total number of accept characters
-                        Token.symbol = self.get_dfa_state(last_accept_state as usize).accept_symbol.clone();
-                        Token.text = <GOLDParser as GPParser>::lookahead(&self, last_accept_pos as usize);
+                        token.symbol = self.get_dfa_state(last_accept_state as usize).accept_symbol.clone();
+                        token.text = <Parser as GPParser>::lookahead(&self, last_accept_pos as usize);
                     }
                     done = true;
                 }
@@ -452,8 +446,8 @@ impl GPParser for GOLDParser {
 
             
         }
-        Token.pos = self.source.pos;
-        Token
+        token.pos = self.source.pos;
+        token
     }
 
     fn lookahead(&self, count: usize) -> String {
@@ -481,7 +475,8 @@ impl GPParser for GOLDParser {
         self.sys_pos.clear();
     }
     fn version(&self) -> String {
-        format!("{} {}",self.properties.get("Name").unwrap(), self.properties.get("Version").unwrap() )
+        let ver = format!("{} - Version {}",Self::PARSER_NAME, Self::PARSER_VERSION);
+        format!("{}\n{} {}",ver, self.properties.get("Name").unwrap(), self.properties.get("Version").unwrap() )
     }
 
 }
@@ -496,16 +491,16 @@ impl GPParser for GOLDParser {
 
 #[cfg(test)]
 pub mod test {
-    use super::GOLDParser;
+    use super::Parser;
 
 
-#[test]
-fn new() {
-    let parser = GOLDParser::new(r"D:\Users\Gian\prog\repos\RUST\goldparser-rs\.ref\goldparser-test.egt".to_string());
-    println!("About:\n{}",parser.about());
-    assert_eq!(parser.grammar.property("Name"),"BADASS");
+    #[test]
+    fn new() {
+        let parser = Parser::new(r"D:\Users\Gian\prog\repos\RUST\Parser-rs\.ref\Parser-test.egt".to_string());
+        println!("About:\n{}",parser.about());
+        assert_eq!(parser.grammar.property("Name"),"BADASS");
 
-}
+    }
 
 
 

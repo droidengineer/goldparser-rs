@@ -10,6 +10,7 @@ Output File PathBuf : %OutputFilePath%
 Output PathBuf      : %OutputPath%
 Output File         : %OutputFile%
 Output File Base    : %OutputFileBase%
+##START-SYMBOL %StartSymbol%
 ##END-PARAMETERS
 
 let rs = something::new();
@@ -28,3 +29,19 @@ Table Count: %Count%
 ##END-RULE-SYMBOLS
 ##END-RULES
 ##END-RULE-TABLE
+
+// constant definitions
+
+// Symbols
+enum {
+##SYMBOLS
+    %ID.Padded% = %Value.Padded%, // %Description%
+##END-SYMBOLS
+}
+
+// Rules
+enum {
+##RULES
+    %ID.Padded% = %Value.Padded%, // %Description%
+##END-RULES
+}

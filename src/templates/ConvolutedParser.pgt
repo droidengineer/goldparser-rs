@@ -1,0 +1,86 @@
+##TEMPLATE-NAME 'Parser Wrapper'
+##LANGUAGE 'Rust'
+##ENGINE-NAME 'Convoluted Systems Engine'
+##AUTHOR 'Gian James'
+##FILE-EXTENSION 'rs'
+##NOTES
+Skeleton program in Rust for the GOLD Parser parser generator system
+by Gian James
+
+Can load an EGT grammar file, a source file in the target language, and
+parse the source against the grammar and generate a parse tree for for
+dumping or executing.
+##END-NOTES
+##ID-CASE Propercase
+##ID-SEPARATOR '_'
+##ID-SYMBOL-PREFIX 'Symbol'
+##ID-RULE-PREFIX 'Rule'
+
+
+// Generated parser class for
+##PARAMETERS
+//Name                : %Name%
+//Version             : %Version%
+//Author              : %Author%
+//About               : %About%
+//Case Sensitive      : %CaseSensitive%
+#//Start Symbol        : %StartSymbol%
+
+//Output File PathBuf : %OutputFilePath%
+//Output PathBuf      : %OutputPath%
+//Output File         : %OutputFile%
+//Output File Base    : %OutputFileBase%
+pub struct %Name%Parser {
+##END-PARAMETERS
+    pub parser: GOLDParser,
+    pub root: Reduction,
+    pub ignore_case: bool,
+
+}
+
+##PARAMETERS
+impl %Name%Parser {
+    pub fn new() -> Self {
+        let mut parser = GOLDParser::new("%Name%.egt");
+        parser.load_source("%Name%.ext");
+        
+        %Name%Parser {
+            parser,
+            root,
+            ignore_case: %CaseSensitive%,
+        }
+    }
+
+    pub fn about(&self) -> String {
+        String::from("%About%")
+    }
+    pub fn version(&self) -> String {
+        format!("%Name% v%Version%")
+    }
+##END-PARAMTERS
+
+    pub fn reduce(&mut self, reduction: &Reduction) -> &Reduction {
+        match reduction.rule.index {
+##RULES
+            // %Description%
+            %ID% => todo!(),
+##END-RULES
+            _ => panic!("Rule {} not implemented. The file needs to be updated.", reduction.rule.symbol.to_string()),
+        }
+    }
+    pub fn accept(&mut self, reduction: Reduction) { self.root = reduction; }
+}
+
+// Symbols
+enum SYMBOLS {
+##SYMBOLS
+    %ID.Padded% = %Value.Padded%, // %Description%
+##END-SYMBOLS
+}
+
+// RULES
+enum RULES {
+##RULES
+    %ID.Padded% = %Value.Padded%, // %Description%
+##END-RULES
+}

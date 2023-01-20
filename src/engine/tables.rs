@@ -33,6 +33,8 @@ pub trait Table {
     /// Get number of entries
     fn len(&self) -> usize;
 
+    // fn with_capacity(size: usize) -> 
+
     /// Resize to fixed size
     fn resize(&mut self, sz: usize);
 
@@ -41,6 +43,7 @@ pub trait Table {
 
 }
 
+#[derive(Default)]
 /// SymbolTable
 pub struct SymbolTable(Vec::<Symbol>);
 //pub struct SymbolTable(HashMap<String, Symbol>);
@@ -77,6 +80,13 @@ impl SymbolTable {
         }
         None
     }
+    pub fn with_capacity(size: usize) -> Self {
+        SymbolTable(Vec::with_capacity(size))
+    }
+    pub fn push(&mut self, item: <SymbolTable as Table>::Item) {
+        self.0.push(item);
+    }
+
 }
 impl Table for SymbolTable {
     type Item = Symbol;
@@ -113,14 +123,11 @@ impl Table for SymbolTable {
     
 }
 
-// impl Index<Symbol> for SymbolTable {
-//     type Output = Symbol;
-//     /// charset_table[0]
-//     fn index(&self, index: Symbol) -> &Self::Output {
-//         let i = index.index;
-//         &self.0[i]
-//     }
-// }
+impl From<Vec::<Symbol>> for SymbolTable {
+    fn from(value: Vec::<Symbol>) -> Self {
+        SymbolTable(value)
+    }
+}
 impl Index<usize> for SymbolTable {
     type Output = Symbol;
     fn index(&self, index: usize) -> &Self::Output {
@@ -255,6 +262,8 @@ impl IndexMut<usize> for CharacterSetTable {
 /// ProductionTable
 pub struct ProductionTable(Vec<ProductionRule>);
 impl ProductionTable {
+    pub fn new() -> Self { ProductionTable(Vec::new()) }
+    pub fn with_capacity(capacity: usize) -> Self {ProductionTable(Vec::with_capacity(capacity))}
 
     pub fn add(&mut self, rule: ProductionRule) {
         let index = rule.index;

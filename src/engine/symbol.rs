@@ -4,6 +4,7 @@
 
 use std::{fmt::Display, ops::{Index, IndexMut}};
 
+use enum_primitive::enum_from_primitive;
 use utf16string::{WString, LE};
 
 //pub use SymbolTableRecord as Symbol;
@@ -81,7 +82,6 @@ impl Display for SymbolTableRecord {
 } */
 
 #[derive(Debug,Default,Clone)]
-// SymbolTable
 pub struct Symbol {
     // DEPRECATED
     pub index: usize,
@@ -136,11 +136,14 @@ impl PartialEq for Symbol {
 
 #[cfg(test)]
 pub mod test {
+    use super::SymbolType;
+
 
 
     #[test]
-    fn symbol() {
-
+    fn symbol_type() {
+        let kind = SymbolType::NonTerminal;
+        println!("{} {:?}",kind.format(),kind);
     }
 
 }
