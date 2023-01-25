@@ -1,6 +1,6 @@
 //! A simple trait for interacting with various types of table used internally.
 
-use std::{ops::{Index, IndexMut}, collections::HashMap};
+use std::{ops::{Index, IndexMut}, collections::HashMap, fmt::Display};
 
 use super::{Symbol, SymbolType, LALRState, DFAState, CharacterSet, ProductionRule, LexicalGroup};
 
@@ -43,7 +43,7 @@ pub trait Table {
 
 }
 
-#[derive(Default)]
+#[derive(Debug,Default,Clone)]
 /// SymbolTable
 pub struct SymbolTable(Vec::<Symbol>);
 //pub struct SymbolTable(HashMap<String, Symbol>);
@@ -55,14 +55,18 @@ impl SymbolTable {
     }
     /// could replace this with trait `Display`
     pub fn to_string(&self) -> String {
-        let mut buf = String::new();
-        self.0.as_slice()
-            .into_iter()
-            .map(|s| { 
-                let str = format!("{} ",s);
-                buf.push_str(str.as_str());
-            }).next();
-        buf
+        format!("{}\n", self.0.iter().map(|s| s.to_string()).collect::<String>())
+        // let mut buf = String::new();
+        // self.0.as_slice()
+        //     .into_iter()
+        //     .map(|s| { 
+        //         let str = format!("{} ",s);
+        //         buf.push_str(str.as_str());
+        //     }).next();
+        // buf
+    }
+    pub fn as_handle(&self) -> String {
+        format!("{}\n", self.0.iter().map(|s| s.as_handle() + " ").collect::<String>())
     }
     pub fn get(&self, name: String) -> Option<&Symbol> {
         for sym in &self.0 {
@@ -143,12 +147,12 @@ impl Index<usize> for SymbolTable {
 }
 
 /// LRStateTable
-pub struct LRStateTable(Vec<LALRState>);
-impl LRStateTable {
-    pub fn new() -> Self { LRStateTable(Vec::new()) }
+pub struct LALRStateTable(Vec<LALRState>);
+impl LALRStateTable {
+    pub fn new() -> Self { LALRStateTable(Vec::new()) }
 
 }
-impl Table for LRStateTable {
+impl Table for LALRStateTable {
     type Item = LALRState;
 
     fn add(&mut self, state: Self::Item) {
@@ -174,11 +178,22 @@ impl Table for LRStateTable {
     }
 }
 
-impl Index<usize> for LRStateTable {
+impl Display for LALRStateTable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f,"{}", self.0.iter().map(|d| {format!("{}\n",d)}).collect::<String>())
+    }
+}
+
+impl Index<usize> for LALRStateTable {
     type Output = LALRState;
 
     fn index(&self, index: usize) -> &Self::Output {
         &self.0[index]
+    }
+}
+impl IndexMut<usize> for LALRStateTable {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.0[index]
     }
 }
 
@@ -192,11 +207,23 @@ impl DFAStateTable {
     }
 }
 
+impl Display for DFAStateTable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f,"{}", self.0.iter().map(|d| {format!("{}\n",d)}).collect::<String>())
+        //write!(f,"{}\n", self.0.iter().map(|s| s.to_string()).collect::<String>())
+    }
+}
+
 impl Index<usize> for DFAStateTable {
     type Output = DFAState;
 
     fn index(&self, index: usize) -> &Self::Output {
         &self.0[index]
+    }
+}
+impl IndexMut<usize> for DFAStateTable {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.0[index]
     }
 }
 
@@ -246,6 +273,12 @@ impl CharacterSetTable {
 
 }
 
+impl Display for CharacterSetTable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f,"{}",self.0.iter().map(|c| {c.to_string()}).collect::<String>())
+    }
+}
+
 impl Index<usize> for CharacterSetTable {
     type Output = CharacterSet;
     /// charset_table[0]
@@ -268,6 +301,12 @@ impl ProductionTable {
     pub fn add(&mut self, rule: ProductionRule) {
         let index = rule.index;
         self.0[index] = rule;
+    }
+}
+
+impl Display for ProductionTable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f,"{}",self.0.iter().map(|c| {format!("{}",c.to_string())}).collect::<String>())
     }
 }
 
@@ -300,7 +339,10 @@ impl Table for ProductionTable {
     }
 
     fn get(&self, item: Self::Item) -> Option<&Self::Item> {
-        todo!()
+        if item.index <= self.len() {
+            return Some(&self.0[item.index])
+        }
+        None
     }
 
     fn len(&self) -> usize {
@@ -334,5 +376,15 @@ impl Index<usize> for GroupTable {
     }
 }
 
+
+
+#[cfg(test)]
+mod test {
+
+    #[test]
+    fn display() {
+
+    }
+}
 
 

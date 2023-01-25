@@ -1,91 +1,64 @@
+> # _NB: Work In Progress_
 
-  
+# Binaries
 
-One of the primary goals of the GOLD Parsing System is to support any number of programming languages. To accomplish this, the logic used to construct parse tables is logically removed from the algorithms that do the actual parsing.
+`egtutil` is a binary in the \bin directory for basic operations on compiled `Enhanced Grammar Tables` and serves as a working example of implementing the parsers from this crate. The 
+interactive feature implements a [REPL](https://www.digitalocean.com/community/tutorials/what-is-repl)-like environment to walk through the [AST](https://en.wikipedia.org/wiki/Abstract_syntax_tree) of your parsed source code.
 
-  
+## Background
 
-When a grammar is analyzed by the GOLD Builder, parse tables are constructed for the Deterministic Finite Automata (DFA) and LALR algorithms. Both the DFA and LALR algorithms are simple automatas, and can be easily implemented in different programming languages with a minimum of code. The Engine has already been implemented in Visual Basic, C++, C#, ANSI C, Java and Delphi.
+One of the primary goals of the [[GOLD Parsing System](http://goldparser.org/index.htm) is to support any number of programming languages. To accomplish this, the logic used to construct parse tables is logically removed from the algorithms that do the actual parsing.
 
-  
+When a grammar is analyzed by the [GOLD Builder](http://goldparser.org/doc/builder-cmd/index.htm), parse tables are constructed for the [Deterministic Finite Automata](https://en.wikipedia.org/wiki/Deterministic_finite_automaton) (DFA) and [Look Ahead, Left to Right](https://en.wikipedia.org/wiki/LALR_parser) (LALR) algorithms. Both the DFA and LALR algorithms are simple automatas, and can be easily implemented in different programming languages with a minimum of code. The Engine has already been implemented in Visual Basic, C++, C#, ANSI C, Javascript, x86 ASM, Java and Delphi.
 
-Once the parse tables are constructed, they can be saved to a Compiled Grammar Table file (.cgt). This file is platform and programming language independent. As a result, different implementations of the Engine can load the file and use its information.
+Once the parse tables are constructed, they can be saved to a compiled [Enhanced Grammar Table](http://goldparser.org/doc/egt/index.htm) file (.egt). This file is platform and programming language independent. As a result, different implementations of the Engine can load the file and use its information.
 
 http://goldparser.org/doc/cgt/index.htm
 
-  
 
 # Introduction
 
 While the text of a program is easy to understand by humans, the computer must convert it into a form which it can understand before any emulation or compilation can begin.
 
-  
-
 This process is know generally as "parsing" and consists of two distinct parts.
-
-  
 
 The first part is the "Tokenizer" - also called a "lexer" or "scanner". The Tokenizer takes the source text and breaks it into the reserved words, constants, identifiers, and symbols that are defined in the language. These "Tokens" are subsequently passed to the actual 'parser' which analyzes the series of Tokens and then determines when one of the language's syntax rules is complete.
 
-  
-
 As these completed rules are "reduced" by the parser, a tree following the language's grammar and representing the program is created. In this form, the program is ready to be interpreted or compiled by the application.
-
-  
 
 Modern bottom-up parsers use a [Deterministic Finite Automaton (DFA)](https://en.wikipedia.org/wiki/Deterministic_finite_automaton) to implement the Tokenizer and a LALR(1) state machine to parse the created Tokens. Practically all common parser generators, such as the UNIX standard YACC, use these algorithms.
 
-  
-
 The actual LALR(1) and DFA algorithms are easy to implement since they rely on tables to determine actions and state transition. Consequently, it is the computing of these tables that is both time-consuming and complex.
-
-  
 
 The GOLD Parser Builder performs this task. Information is read from an source grammar and the the appropriate tables are computed . These tables are then saved to a file which can be, subsequently, loaded by the actual parser engine and used.
 
-  
-
 > http://www.goldparser.org/articles/parser.htm
 
-  
+
+
 
 # Parsers and Parsing
-
 The primary goal a parser is to organize a sequence of Tokens based on the rules of a formal language. As the parser accepts a sequence of Tokens, it determines, based on this information, when the grammar's respective rules are complete and verifies the syntactic correctness of the Token sequence. The end result of the process is a "derivation" which represents the Token sequence organized following the rules of the grammar.
 
 ![Diagram showing parsing flow](http://www.goldparser.org/images/parser.gif)
   
-
 Typically, Backus-Naur Form is used to define the context free grammar used by the language. The entire language, as a whole, is represented through a single nonterminal called the "start symbol". Often the parse information is stored into a tree, called a derivation tree, where the start symbol is the root node.
 
-  
-
 There are two distinct approaches currently used to implement parsers. Recursive Descent Parsers and LL parsers are examples of top-down parsers and LR parsers are examples of bottom-up parsers. Most parser generators, such as YACC, use one of the LR algorithm variants.
-
-  
 
 ## Deterministic Finite Automata
 
 One of the major components of GOLD (and many other parsing systems) is the Tokenizer. The goal of the Tokenizer (also called a scanner) is to recognize different Tokens and pass this information to the parsing algorithm.
 
-  
-
 Essentially, regular expressions can be used to define a regular language. Regular languages, in turn, exhibit very simple patterns. A deterministic finite automaton, or DFA for short, is a method if recognizing this pattern algorithmically.
-
-  
 
 As the name implies, deterministic finite automata are deterministic. This means that from any given state there is only one path for any given input. In other words, there is no ambiguity in state transition. It is also complete which means there is one path from any given input. It is finite; meaning there is a fixed and known number of states and transitions between states. Finally, it is an automaton. The transition from state to state is completely determined by the input. The algorithm merely follows the correct branches based on the information provided.
 
-  
-
 A DFA is commonly represented with a graph. The term "graph" is used quite loosely by other scientific fields. Often, it is refers to a plotted mathematical function or graphical representation of data. In computer science terms, however, a "graph" is simply a collection of nodes connected by edges.
 
-  
 Most parser engines, including the GOLD Parsing System, use a DFA to implement the Tokenizer. This part of the engine scans the input and determines when and if a series of characters can be recognized as a Token.
 
-  
 The figure to the right is a simple Deterministic Finite Automata that recognizes common identifiers and numbers.![enter image description here](http://www.goldparser.org/images/diagram-dfa.gif) For instance, assume that the input contains the text "gold". From State 1 (the initial state), the DFA moves to State 2 when the "g" is read. For the next three characters, "o", "l" and "d", the DFA continues to loop to State 2.
-
 
 By design, the Tokenizer attempts to match the longest series of characters possible before accepting a Token. For example: if the Tokenizer is reading the characters "count" from the source, it can match the first character "c" as an identifier. It would not be prudent for the Tokenizer to report five separate identifiers: "c", "o", "u", "n" and "t".
 
@@ -105,7 +78,6 @@ For more information, please refer to the following:
 > http://www.goldparser.org/articles/dfa.htm
 
   
-
 ## Left-to-Right Derivation Parsing (LR)
 
 LR Parsing, or Left-to-right Right-derivation parsing, uses tables to determine when a rule is complete and when additional Tokens must be read from the source string. LR parsers identify substrings which can be reduced to nonterminals. Unlike recursive descent parsers, LR parsers do very little "thinking" at runtime. All decisions are based on the content of the parse tables.

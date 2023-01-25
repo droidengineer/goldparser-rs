@@ -1,8 +1,6 @@
 //! Source Reader
 //! 
 
-use std::{str::CharIndices, fmt::format};
-
 use crate::engine::Position;
 
 
@@ -13,6 +11,7 @@ pub struct SourceReader {
     pub pos: Position,
     bufpos: usize,
 }
+
 
 impl SourceReader {
     pub fn new(source: String) -> Self {
@@ -71,6 +70,14 @@ impl SourceReader {
         self.buf = String::new();
         self.pos = Position::default();
         self.bufpos = 0;
+    }
+
+    pub fn len(&self) -> usize {
+        self.src.len()
+    }
+    pub fn to_string(&self) -> String {
+        let ret = self.src.iter().collect::<String>();
+        ret
     }
 
     #[inline(always)]

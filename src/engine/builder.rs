@@ -33,8 +33,15 @@ pub struct Builder {
 }
 
 impl Builder {
-    pub fn new(file: OsString) -> Self {
-        let mut file = File::open(file).unwrap();
+    pub fn new(flname: OsString) -> Self {
+        //let mut file = File::open(file).unwrap();
+        let mut file = match File::open(flname) {
+            Ok(f) => f,
+            Err(e) => { // we shouldn't panic in new()
+                panic!("{e}")
+            }
+        };
+        
         let mut buf = Vec::new(); //vec![0u8];
         match file.read_to_end(&mut buf) {
             Ok(sz) => println!("Read {sz} bytes."),
@@ -59,7 +66,7 @@ impl Builder {
         let mut egt = EnhancedGrammarTable::new(header.to_string());
         //let records = self.records;
         for record in &self.records { //self.records.as_slice() {
-            println!("{:?}", record.kind);
+            //DEBUG println!("{:?}", record.kind);
             match record.kind {
                 RecordType::Multi => panic!(),
                 RecordType::Property => {
@@ -67,7 +74,7 @@ impl Builder {
                     let name = record.entries[1].string();
                     let value = record.entries[2].string();
                     let r = PropertyRecord::new(index,name,value);
-                    println!("{}", r);
+                    //DEBUG println!("{}", r);
                     //egt.properties[index] = r;
                     egt.properties.insert(index, r);
                     //println!("");
@@ -80,7 +87,7 @@ impl Builder {
                     let l = record.entries[4].integer();
                     let g = record.entries[5].integer();
                     let rec = TableCountsRecord::new(s,c,r,d,l,g);
-                    println!("{}", rec);
+                    //DEBUG println!("{}", rec);
                     egt.counts = rec;
                     // sets up our random access through array indexing here
                     egt.resize();
@@ -108,7 +115,7 @@ impl Builder {
                     //     i.integer(), u.integer(), c.integer(), r
                     // );
                     let rec = CharacterSet::new(r);
-                    println!("{:?}", rec);
+                    //DEBUG println!("{:?}", rec);
                     //egt.charset[i] = rec;
                     egt.charset.add(i,rec);
                 },
@@ -121,7 +128,7 @@ impl Builder {
 
                     let rec = Symbol::new(index,s,k);
 
-                    println!("{}", rec);
+                    //DEBUG println!("{}", rec);
                     egt.symbols.add(rec);
                 },
                 RecordType::Group => todo!(),
@@ -130,12 +137,14 @@ impl Builder {
                     let h = record.entries[1].as_usize();
                     let _empty = &record.entries[2];
                     //let mut r: Vec<u16> = Vec::new();
-                    let mut symbols: Vec<Symbol> = Vec::with_capacity(record.num_entries as usize);
+                    let mut symbols: Vec<Symbol> = Vec::new(); //Vec::with_capacity(record.num_entries as usize);
                     let mut idx = 3;
                     while idx < (record.num_entries-1) as usize {
                         let ex = record.entries[idx].as_usize();
                         let sym = egt.symbols[ex].clone();
-                        symbols[ex] = sym;
+                        //symbols[ex] = sym;
+                        //symbols.insert(ex, sym);
+                        symbols.push(sym);
                         idx += 1;
                     }
 
@@ -148,7 +157,7 @@ impl Builder {
                     let dfa = record.entries[0].integer();
                     let lalr = record.entries[1].integer();
                     let rec = InitialStatesRecord::new(dfa,lalr);
-                    println!("{}", rec);
+                    //DEGBUG println!("{}", rec);
                     egt.initial_states = rec;                 
                 },
                 RecordType::DFA => {
@@ -174,7 +183,7 @@ impl Builder {
                     let rec = DFAState::new(
                         state_idx, accepts_symbol, sym, edges
                     );
-                    println!("{}", rec);
+                    // DEBUG println!("{}", rec);
                     //egt.dfa_states.insert(state_idx, rec);  
                     egt.dfa_states[state_idx] = rec;      
                 },
@@ -196,7 +205,7 @@ impl Builder {
                         idx += 4;
                     }
                     let rec = LALRState::new(index, actions);
-                    println!("{}", rec);
+                    // DEBUG println!("{}", rec);
                     //egt.lalr_states.insert(index, rec); 
                     egt.lalr_states[index] = rec;
                 },
@@ -222,7 +231,7 @@ impl Builder {
             //println!("{:?}",lrec);
             self.records.push(lrec);
         }
-        println!("Total Records: {} Entries: {}", self.records.len(), entries);
+        // DEBUG println!("Total Records: {} Entries: {}", self.records.len(), entries);
         self.initialized = true;
     }
 
@@ -273,7 +282,7 @@ impl Builder {
             },
             EntryType::Boolean => {
                 let b = self.read_byte();
-                let mut entry = RecordEntry::Bool(b);
+                let entry = RecordEntry::Bool(b);
                 //println!("@{} => {:?}", self.pos, entry);                      
                 entry
             },

@@ -34,8 +34,9 @@ impl TableCountsRecord {
 
 impl std::fmt::Display for TableCountsRecord {
 fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    let disp = format!("Table Counts: s({}) c({}) r({}) d({}) l({}) g({})",
-        self.symtab, self.charset, self.rules,self.dfatab, self.lalrtab, self.lexgroups);
+    let disp = format!("{:9} {:3}  {:16} {:3}  {:12} {:3}\n{:9} {:3}  {:16} {:3}  {:12} {:3}",
+        "Symbols", self.symtab, "Character Sets", self.charset, "DFA States",self.dfatab, 
+        "Groups", self.lexgroups, "Production Rules", self.rules, "LALR States", self.lalrtab);
     write!(f,"{}", disp)
 }
 }

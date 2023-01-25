@@ -72,9 +72,13 @@ impl DFAState {
 }
 impl Display for DFAState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let disp = format!("@{:04X} accept state: {} accept index: {} Edges: {:?}",
-            self.index, self.accept, self.accept_symbol, self.edges);
-        write!(f,"{}", disp)
+        write!(f,"[DFA State {:3}] ", self.index)?;
+        if self.accept { write!(f, "Terminal: \'{}\' ", self.accept_symbol.name)?;}
+        writeln!(f,"Edges:")?;
+        write!(f,"{}",self.edges.iter().map(|e| {e.to_string() + "\n"}).collect::<String>())
+        // let disp = format!("@{:04X} accept: {} terminal: {} Edges: {:?}",
+        //     self.index, self.accept, self.accept_symbol, self.edges);
+        // writeln!(f,"{}", disp)
     }
 }
 
@@ -96,6 +100,11 @@ pub struct DFAEdge {
     pub target_state: usize, //DFAState,
 }
 impl DFAEdge {
+}
+impl Display for DFAEdge {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f,"Goto {:4} Character {}",self.target_state,self.chars)
+    }
 }
 
 //---------------------------[LALRState]
@@ -140,12 +149,17 @@ impl LALRState
 impl Display for LALRState
  {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f,"[LALR State {:3}] ", self.index)?;
+        
         let actions = self.actions.as_slice();
-        let str : Vec<String> = actions.into_iter()
-            .map(|a| format!("{}",a))
-            .collect();
-        let disp = format!("@{:04X} LALRState[{}] Actions: {:?}",self.index, self.index, str.iter());
-        write!(f,"{}", disp)
+        // let str : Vec<String> = actions.into_iter()
+        //     .map(|a| format!("{}\n",a))
+        //     .collect();
+        write!(f,"{}",actions.into_iter()
+                               .map(|a| format!("{}\n",a))
+                               .collect::<String>())
+        // let disp = format!("@{:04X} LALRState[{}] Actions: {:?}",self.index, self.index, str.iter());
+        // write!(f,"{}", disp)
     }
 }
 
@@ -179,16 +193,14 @@ impl LALRAction {
 impl Display for LALRAction
  {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut target = String::new();
+        write!(f,"{:16} ",self.symbol.as_handle())?;
         match self.action {
-            ActionType::Goto |
-            ActionType::Shift => target = format!("LALRStateTable[{}]",self.target_idx),
-            ActionType::Reduce => target = format!("RuleTable[{}]",self.target_idx),
-            _ => target.push_str("<ignored>"),
+            ActionType::Goto => write!(f,"Goto to LALR State {}",self.target_idx),
+            ActionType::Shift => write!(f,"Shift to LALR State {}",self.target_idx),
+            ActionType::Reduce => write!(f,"Reduce to Rule {}",self.target_idx),
+            _ => write!(f,"LALRAction ERROR"),
         }
-        let disp = format!("symbol: {} action: {:?} target: {}",
-            self.symbol,self.action,target);
-        write!(f,"{}", disp)
+
     }
 }
 

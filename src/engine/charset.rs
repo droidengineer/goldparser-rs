@@ -9,7 +9,8 @@
 //! | Byte | Integer | Integer | Integer | Empty | Integer1 .. Integer2 |
 //! | 'c'  |  index  | unicode |numrange | rsvd  |  start        end    |
 
-use std::ops::{Range, RangeInclusive};
+use std::ops::{RangeInclusive};
+use std::cmp;
 
 type  CharacterRange = Vec<RangeInclusive<char>>;
 
@@ -30,19 +31,51 @@ impl CharacterSet {
         }
         false
     }
-    
+    pub fn as_strange(&self) -> String {
+        format!("Ranges: {}\n", self.0.iter().map(|r| {
+            format!("\'{}\'-\'{}\' ", r.start().escape_default(), r.end().escape_default())
+        }).collect::<String>())       
+    }
     pub fn ranges(&self) -> &CharacterRange { &self.0 }
+    ///TODO Merges ranges and overlapping intervals
+    // pub fn concat(&mut self) -> String {
+    //     let mut catstr = String::new();
+    //     for range in &self.0 {
+    //         let (start, end) = range.into_inner();
+    //         // if start == end {
+    //         //     catstr.push(start);
+    //         //     //return catstr;
+    //         // }
+    //     }
+    //     // self.0.iter().map(|mut r| {
+            
+
+    //     // });
+    //     catstr
+    //     //let ranges = self.0.sort_by(|a,b| a.cmp(&b));
+    //     //let ranges = self.0.concat().
+    // }
+    pub fn merge(&mut self, other: &RangeInclusive<char>) {
+        todo!()
+    }
 }
 
 impl std::fmt::Display for CharacterSet {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         //let disp = format!("@{:04X} Unicode: {:04X} Count: {} Ranges: {:?}",self.index, self.unicode, self.range_count, self.ranges);
-        let mut disp = String::from("Range ");
-        for range in &self.0 {
-            let fmt = format!("{}-{} ", range.start(), range.end());
-            disp.push_str(fmt.as_str());
-        }
-        write!(f,"{}", disp)
+        //TODO compress ranges into a string
+        // write!(f,"{}",self.concat())
+        let mut catstr = String::new();
+        let mut range = self.0.clone();
+        range.iter_mut().map(|r| {
+            let mut ch = r.next();
+            while ch != None {
+                let c = ch.unwrap();
+                catstr.push(c);
+                ch = r.next();
+            }
+       }).count();
+       write!(f,"{}",catstr)
     }
 }
 

@@ -7,7 +7,7 @@
 
 use crate::engine::SymbolType;
 
-use super::{Position, Symbol, Value};
+use super::{Position, Symbol, Value, reduction::Reduction};
 
 
 #[derive(Debug,Default,Clone)]
@@ -28,8 +28,8 @@ pub struct Token {
     /// String from the source file that generated this `Token`
     /// For a `Token` created by reduction, this is empty
     pub text: String,
-    /// Data associated with this `Token`
-    pub data: Value,
+    /// Data associated with this `Token` is a `Reduction` if present
+    pub data: Option<Reduction>,
     pub lalr_state: usize,
     /// `Position` 
     pub pos: Position,
@@ -41,13 +41,20 @@ impl Token {
         Token {
             symbol,
             text,
-            data: Value::default(),
+            data: None,
             lalr_state: 0,
             pos: Position::default(),
         }
     }
-    pub fn set_data(&mut self, data: Value) {
-        self.data = data;
+    #[inline(always)]
+    pub fn has_reduction(&self) -> bool {
+        match self.data {
+            Some(_) => true,
+            None => false,
+        }
+    }
+    pub fn set_data(&mut self, data: &Reduction) {
+        self.data = Some(data.to_owned());
     }
     #[inline(always)]
     pub fn kind(&self) -> &SymbolType {
@@ -58,13 +65,17 @@ impl Token {
         &self.symbol.name
     }
     #[inline(always)]
-    pub fn text(&self) -> String {
-        self.text.clone()
+    pub fn text(&self) -> &String {
+        &self.text
     }
     #[inline(always)]
     pub fn state(&self) -> usize {
         self.lalr_state
     }
-
+    #[inline(always)]
+    /// You should always call `has_reduction` before this or risk panic
+    pub fn reduction(&self) -> &Reduction {
+        self.data.as_ref().unwrap()
+    }
 
 }

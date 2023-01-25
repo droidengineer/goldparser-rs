@@ -10,9 +10,10 @@ use std::path::PathBuf;
 use std::num::ParseIntError;
 
 use super::egt::EnhancedGrammarTable;
+use super::reduction::Reduction;
 use crate::engine::states::ActionType;
 use crate::engine::{LALRState, Stack, Position, Symbol, SymbolType, DFAState, Value};
-use crate::engine::tables::{CharacterSetTable,DFAStateTable,SymbolTable,LRStateTable,ProductionTable, GroupTable, Table};
+use crate::engine::tables::{CharacterSetTable,DFAStateTable,SymbolTable,LALRStateTable,ProductionTable, GroupTable, Table};
 use crate::engine::token::{Token};
 use super::source::SourceReader;
 use super::Builder;
@@ -28,9 +29,12 @@ pub trait GPParser {
     }
 
     /// Read the your source code to be parsed into a string buffer
-    fn load_source(source: String) -> String {
-        fs::read_to_string(source)
-            .expect("Unable to read {source}")
+    fn load_source(source: String) -> Result<String, ParserError> {
+        match fs::read_to_string(source) {
+            Ok(s) => Ok(s),
+            Err(e) => Err(ParserError::Format(GPMessage::NotLoadedError))
+          //  .expect("Unable to read {source}")
+        }
     }
 
     /// Performs a parse action on the input source. This should continue until the grammar
@@ -209,20 +213,38 @@ impl Parser {
         self.source.lookahead(index)
     }
 
-    pub fn load_source(&mut self, source: String)  {
-        let src = <Parser as GPParser>::load_source(source);
+    /// Loads the parse tables from the specified `source` as `String`
+    pub fn load_source(&mut self, source: String)  -> Result<(), ParserError> {
+        let src = <Parser as GPParser>::load_source(source)?;
         self.source.load(src);
         self.initialized = true;
+        Ok(())
     }
     pub fn clear(&mut self) {
         self.reset();
     }
 
-    pub fn symbol_by_name(&self, name: String) -> Option<&Symbol> {
-        self.grammar.symbols.get(name)
+    pub fn symbol_by_name(&self, name: &str) -> Option<&Symbol> {
+        self.grammar.symbols.get(name.to_string())
     }
     pub fn symbol_by_type(&self, kind: SymbolType) -> Option<&Symbol> {
         self.grammar.symbols.get_by_type(kind)
+    }
+    pub fn get_current_reduction(&self) -> Option<&Reduction> {
+        match &self.stack.peek().data {
+            Some(r) => Some(&r),
+            None => None,
+        }
+        // if self.have_reduction {
+        //     Some(&self.stack.peek().data?)
+        // } else {
+        //     None
+        // }
+    }
+    pub fn set_current_reduction(&mut self, reduction: Reduction) {
+        if self.have_reduction {
+            self.stack.peek_mut().set_data(&reduction);
+        }
     }
 
 }
@@ -238,9 +260,6 @@ impl GPParser for Parser {
             // DFA lexer provides a Token
             result = self.parse_step();
             match result {
-                // GPMessage::Empty => todo!(),
-                // GPMessage::TokenRead => todo!(),
-                // GPMessage::Reduction => todo!(),
                 GPMessage::Accept => {
                     done = true;
                 },
@@ -261,6 +280,9 @@ impl GPParser for Parser {
                     println!("{:?} Internal error.",self.curr_position);
                     done = true;
                 },
+                // GPMessage::Empty => todo!(),
+                // GPMessage::TokenRead => todo!(),
+                // GPMessage::Reduction => todo!(),                
                 // all non-error events are handled by calling event procedures
                 _ => { }
             }
@@ -308,7 +330,7 @@ impl GPParser for Parser {
                     _ => {  // LALR parsing of the input Token
                         let parsemsg = self.parse_tokens(&mut token);
                         match parsemsg {
-
+                            // TODO I think I have to do something here
 
                             _ => { // fallthru includes reduce/eliminated
                                    // shift, and trim-reduced
@@ -354,7 +376,7 @@ impl GPParser for Parser {
                         reduce_tokens[i] = self.stack.pop();
                     }
                     head = Token::new(rule.head(), String::default());
-                    head.data = Value::Reduction(reduce_tokens);
+                    head.data = Some(Reduction::new(reduce_tokens));
                     result = GPParseResult::Reduce;
                 }
                 // execute GOTO action for the rule that was just reduced
@@ -491,17 +513,27 @@ impl GPParser for Parser {
 
 #[cfg(test)]
 pub mod test {
+    use crate::engine::parser::GPParser;
+
     use super::Parser;
 
 
     #[test]
     fn new() {
-        let parser = Parser::new(r"D:\Users\Gian\prog\repos\RUST\Parser-rs\.ref\Parser-test.egt".to_string());
+        let parser = Parser::new(r"D:\Users\Gian\prog\repos\RUST\goldparser-rs\.ref\goldparser-test-new.egt".to_string());
         println!("About:\n{}",parser.about());
         assert_eq!(parser.grammar.property("Name"),"BADASS");
+    }
+    #[test]
+    fn load_source() {
+        let mut parser = Parser::new(r"D:\Users\Gian\prog\repos\RUST\goldparser-rs\.ref\goldparser-test-new.egt".to_string());
+        parser.load_source(r"D:\Users\Gian\prog\repos\RUST\goldparser-rs\.ref\goldparser-test.asm".to_string());
+    
+        println!("{}",parser.version());
+        println!("Source length: {}", parser.source.len());
+        println!("Source:\n{}",parser.source.to_string());
 
     }
-
 
 
 }

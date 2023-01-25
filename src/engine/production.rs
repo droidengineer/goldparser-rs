@@ -10,7 +10,7 @@
 //! http://goldparser.org/doc/egt/record-production.htm
 
 
-use std::ops::{Index, IndexMut};
+use std::{fmt::Display};
 
 use super::{Symbol, SymbolType, SymbolTable, tables::Table};
 
@@ -41,7 +41,7 @@ use super::{Symbol, SymbolType, SymbolTable, tables::Table};
 
 // }
 
-#[derive(Default)]
+#[derive(Debug,Default,Clone)]
 /// Represents the logical structures of the grammar. Productions consist of a head (nonterminal) followed
 /// by a series of both nonterminals and terminals.
 pub struct ProductionRule {
@@ -51,6 +51,7 @@ pub struct ProductionRule {
 }
 
 impl ProductionRule {
+    //pub const DEFAULT: ProductionRule = ProductionRule { index: 0, head: Symbol::default(), symbols: SymbolTable::new()};
     pub fn new(index: usize, head: Symbol, symbols: SymbolTable) -> Self {
         ProductionRule { index, head, symbols }
     }
@@ -61,10 +62,17 @@ impl ProductionRule {
         self.head.clone()
     }
     pub fn handle(&self) -> String {
-        self.to_string()
+        //self.symbols.to_string()
+        self.symbols.as_handle()
     }
     pub fn to_string(&self) -> String {
-        format!("{} ::= {}",self.head,self.handle())
+        format!("{:16} ::= {}",self.head.name, self.handle())
+    }
+}
+
+impl Display for ProductionRule {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f,"{}", self.to_string())
     }
 }
 

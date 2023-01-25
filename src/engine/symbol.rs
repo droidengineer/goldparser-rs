@@ -92,6 +92,7 @@ pub struct Symbol {
 }
 
 impl Symbol {
+    //pub const DEFAULT: Symbol = Symbol { index: 0, name: "".to_string(), kind: SymbolType::Undefined };
     const QUOTE_CHARS: &str = "|+*?()[]{}<>!";
 
     pub fn new(index: usize, name: String, kind: SymbolType) -> Self {
@@ -106,6 +107,14 @@ impl Symbol {
             source
         }
     }
+
+    pub fn as_handle(&self) -> String {
+        match self.kind {
+            SymbolType::NonTerminal =>  format!("<{}>", self.name),
+            SymbolType::Terminal => format!("\'{}\'", self.name),
+            _ => format!("({})", self.name)
+        }
+    }
 }
 
 /// Text representation of the symbol.
@@ -115,12 +124,12 @@ impl Symbol {
 impl Display for Symbol {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.kind {
-            SymbolType::NonTerminal => write!(f, "<{}>", self.name.to_string()),
+            SymbolType::NonTerminal => write!(f, "Index: {:4} Symbol: <{}> Type: {:?}\n", self.index, self.name,self.kind),
             SymbolType::Terminal => {
-                write!(f, "\'{}\'", self.name.to_string())
+                write!(f, "\'{}\'", self.name)
             },
 
-            _ => write!(f, "({})", self.name.to_string())
+            _ => write!(f, "Index: {:4} Symbol: ({}) Type: {:?}\n", self.index, self.name,self.kind)
         }
     }
 }
