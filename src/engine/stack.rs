@@ -8,7 +8,7 @@ use std::fmt;
 /// Implemending using a `Vec`.
 ///
 /// ```
-/// use stack_vm::Stack;
+/// use engine::Stack;
 /// let mut stack: Stack<usize> = Stack::new();
 /// assert!(stack.is_empty());
 ///
@@ -43,21 +43,23 @@ impl<T: fmt::Debug> Stack<T> {
     }
 
     /// Take a sneaky look at the top element on the stack.
-    pub fn peek(&self) -> &T {
-        let len = self.0.len();
-        if len == 0 {
-            panic!("Cannot peek into empty stack!")
-        }
-        &self.0[len - 1]
+    pub fn peek(&self) -> Option<&T> {
+        self.0.last()
+        // let len = self.0.len();
+        // if len == 0 {
+        //     panic!("Cannot peek into empty stack!")
+        // }
+        // &self.0[len - 1]
     }
 
     /// Make a sneaky change to the top element on the stack.
-    pub fn peek_mut(&mut self) -> &mut T {
-        let len = self.0.len();
-        if len == 0 {
-            panic!("Cannot peek into empty stack!")
-        }
-        &mut self.0[len - 1]
+    pub fn peek_mut(&mut self) -> Option<&mut T> {
+        self.0.last_mut()
+        // let len = self.0.len();
+        // if len == 0 {
+        //     panic!("Cannot peek into empty stack!")
+        // }
+        // &mut self.0[len - 1]
     }
 
     pub fn as_slice(&self) -> &[T] {
@@ -70,9 +72,19 @@ impl<T: fmt::Debug> Stack<T> {
     pub fn len(&self) -> usize { self.0.len() }
 }
 
+impl<T> core::ops::Index<core::ops::Range<usize>> for Stack<T> {
+    type Output = [T];
 
+    fn index(&self, index: core::ops::Range<usize>) -> &Self::Output {
+        self.0.index(index)
+    }
+}
 
-
+#[derive(Debug)]
+enum StackOp<T> {
+    Push(T),
+    Pop(T),
+}
 
 
 
@@ -116,7 +128,7 @@ mod test {
     fn peek() {
         let mut stack: Stack<usize> = Stack::new();
         stack.push(13);
-        assert_eq!(*stack.peek(), 13)
+        assert_eq!(*stack.peek().unwrap(), 13)
     }
 
     #[test]

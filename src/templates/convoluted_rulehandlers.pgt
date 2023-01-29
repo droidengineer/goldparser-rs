@@ -1,0 +1,44 @@
+
+##PRODUCTIONS
+//=========================================================================
+//RULE HANDLER CLASS BEGINS ===============================================
+//=========================================================================
+// [RuleHandler%Value%] 💥
+
+
+/// Rule handler for the %ID% rule.
+pub struct RuleHandler%Value%(rule: &ProductionRule);
+impl RuleHandler%Value% {
+    pub const RULE: &str = "%Description%";
+
+    pub fn new(parser: &GOLDParser) -> Self { RuleHandler%Value%(parser) }
+}
+impl RuleHandler for RuleHandler%Value% {
+    type Item = GOLDParser;
+
+    pub fn execute(&self) -> Result<(),Error> {
+        // 🚨 put your execution code here 🚨
+
+    }
+    pub fn rule(&self) -> &str {
+        Self::RULE
+    }
+}
+impl Reducible for RuleHandler%Value% {
+    pub fn reduce(&mut self, parser: &GOLDParser) -> Reduction {
+        if let Some(reduction) = parser.get_current_reduction() {
+            // Example block that ensures at least 1 parameter is provided, but
+            // not more than 2
+            if reduction.size() > 0 && reduction.size() < 3) {
+                // 🚨 Insert your code here 🚨
+            } else {
+                panic!("Wrong number of parameters: expected 1..2 but got {}.",reduction.size());
+            }
+        } else {
+            panic!("Expected to find a current reduction object.");
+        }
+    }
+}
+//🔚
+
+##END-PRODUCTIONS

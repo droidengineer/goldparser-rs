@@ -17,10 +17,12 @@
 extern crate num_traits;
 
 
-use std::{ops::Deref, default, time::Instant};
+use std::{ops::Deref, time::Instant, fmt::Error};
+use core::{fmt::Debug};
+use core::hash::Hash;
 
-use enum_primitive::{FromPrimitive, enum_from_primitive};
-use utf16string::{WStr, LE, WString};
+use enum_primitive::{enum_from_primitive};
+use utf16string::{LE, WString};
 
 //pub use utf16string::WString as WString;
 pub type Utf16 = WString<LE>;
@@ -172,13 +174,17 @@ impl LogicalRecord {
     }
 }
 
-#[derive(Default,Debug,Clone,Copy)]
+#[derive(Default,Debug,Clone,Copy,PartialEq,Eq)]
 pub struct Position(usize,usize);
 impl Position {
     /// Column number where the Token was read.
     pub fn col(&self) -> usize { self.1 }
     /// Line number where the Token was read.
     pub fn line(&self) -> usize { self.0 }
+    /// Span support
+    pub fn start(&self) -> usize { self.0 }
+    pub fn end(&self) -> usize { self.1 }
+
     pub fn set(&mut self, pos: Position) {
         self.0 = pos.0;
         self.1 = pos.1;
@@ -195,6 +201,89 @@ impl Position {
     }
 
 }
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub struct LineColSpan(Position, Position);
+impl LineColSpan {
+    pub fn new(line: Position, col: Position) -> Self {
+        LineColSpan(line, col)
+    }
+    pub fn line_start(&self) -> usize { self.0.start() }
+    pub fn line_end(&self) -> usize { self.0.end() }
+    pub fn line_pos(&self) -> Position { self.0 }
+    pub fn col_start(&self) -> usize { self.1.start() }
+    pub fn col_end(&self) -> usize { self.1.end() }
+    pub fn col_pos(&self) -> Position { self.1 }
+    pub fn clear(&mut self) {
+        self.0.clear();
+        self.1.clear();
+    }
+}
+
+/// Returns the line and column of the given `pos` and `input`
+// pub(crate) fn line_col(input: &str, pos: usize, start: (usize,usize)) -> (usize,usize) {
+//     let slice = &input[..pos];
+//     // TODO (see pest line_col())
+//   //  let prec_ln = memrchr(b'\n', slice.as_bytes());
+// }
+
+#[derive(Clone,Copy)]
+pub struct Cursor<'i> {
+    input: &'i str,
+    pos: usize,
+}
+impl<'i> Cursor<'i> {
+    pub(crate) unsafe fn new_unchecked(input: &str, pos: usize) -> Cursor<'_> {
+        assert!(input.get(pos..).is_some());
+        Cursor { input, pos }
+    }
+    pub fn new(input: &str, pos: usize) -> Option<Cursor<'_>> {
+        input.get(pos..).map(|_| Cursor { input, pos })
+    }
+    /// Creates a `Cursor` at the start of a `&str`
+    #[inline]
+    pub fn from_start(input: &'i str) -> Cursor<'i> {
+        Cursor { input, pos: 0 }
+    }
+    #[inline]
+    pub fn pos(&self) -> usize { self.pos }
+    #[inline]
+    pub fn span(&self, other: &Cursor<'i>) -> Span<'i> {
+        if core::ptr::eq(self.input, other.input) {
+            unsafe {Span::new_unchecked(self.input, self.pos, other.pos)}
+        } else {
+            // TODO
+            panic!("span created from positions from different inputs")
+        }
+    }
+    // #[inline]
+    // pub fn line_col(&self) -> (usize, usize) {
+    //     if self.pos > self.input.len() {
+    //         panic!("position out of bounds");
+    //     }
+
+    // }
+}
+
+#[derive(Clone,Copy)]
+/// Represents a span within a string. input[start..end] must be valid
+pub struct Span<'i> {
+    input: &'i str,
+    start: usize,
+    end: usize,
+}
+impl<'i> Span<'i> {
+    pub(crate) unsafe fn new_unchecked(input: &str, start: usize, end: usize) -> Span<'_> {
+        Span { input, start, end }
+    }
+    pub fn new(input: &str, start: usize, end: usize) -> Span<'_> {
+        if input.get(start..end).is_some() {
+            return Span { input, start, end }
+        }
+        Span { input, start: usize::MAX, end: usize::MAX }
+    }
+}
+
 
 // #[derive(Debug,Clone)]
 // pub struct Value(_);
@@ -233,4 +322,14 @@ impl Into<String> for Value {
             _ => "".to_string(),
         }
     }
+}
+
+/// A trait which parser rules must implement
+pub trait RuleType: Copy + Debug + Eq + Hash + Ord {}
+impl<T: Copy + Debug + Eq + Hash + Ord> RuleType for T {}
+
+/// A trait with a single method that parses single strings
+pub trait RuleParser<R: RuleType> {
+    /// Parses `&str`
+    fn parse(rule: R, input: &str) -> Result<(Token, R), Error>;
 }

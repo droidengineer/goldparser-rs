@@ -7,17 +7,18 @@
 
 use std::collections::HashMap;
 
-use crate::engine::{Parser, reduction::Reduction, Stack, parser::{GPParser, ParserError}, Value, SymbolType};
-
+use crate::engine::*;
+use crate::engine::{Parser, reduction::Reduction, parser::{GPParser, ParserError}, Value, SymbolType, token::Token};
 use super::Scope;
 
 
 pub struct GOLDParser {
     pub parser: Parser,
-    pub root: Reduction,
+    pub root: Option<Reduction>,
     pub scopes: HashMap<String,Scope>,
     pub curr_scope: Scope,
     pub ignore_case: bool,
+    pub generate_tree: bool,
     
     // TODO Indentation support
     pub ignore_indent: bool,
@@ -42,43 +43,97 @@ impl GOLDParser {
         GOLDParser {
             parser,
             // TODO fix reduction
-            root: Reduction::default(),
+            root: None,
             scopes,
             curr_scope: Scope::default(),
             ignore_case: case,
             ignore_indent,
+            generate_tree: false,
         }
     }
     /// Top-level method to begin parsing. If something very custom is needed, the
-    /// `GOLDParser` can use an overridden method
+    /// `GOLDParser` can use an overridden method.
+    /// This is where high-level error processing and text is done.
     pub fn parse_source(&mut self) -> bool {
         let accept = false;
 
         if !self.is_initialized() { return false; }
         match self.parser.parse() {
             crate::engine::parser::GPMessage::TokenRead => {
-
+                true; // return true;
             },
             crate::engine::parser::GPMessage::Reduction => {
                 return self.process_reduction()
             },
             crate::engine::parser::GPMessage::Empty => todo!(),
-            crate::engine::parser::GPMessage::Accept => todo!(),
+            crate::engine::parser::GPMessage::Accept => {
+                self.root = self.parser.get_current_reduction().cloned();
+                false;
+            },
             crate::engine::parser::GPMessage::NotLoadedError => todo!(),
             crate::engine::parser::GPMessage::LexicalError => todo!(),
-            crate::engine::parser::GPMessage::SyntaxError => todo!(),
+            crate::engine::parser::GPMessage::SyntaxError => {
+                let tokstr = self.get_current_token().text();
+                // TODO add error message info
+                
+                false;
+            },
             crate::engine::parser::GPMessage::GroupError => todo!(),
             crate::engine::parser::GPMessage::InternalError => todo!(),
         }
         true
     }
+
     /// The `GOLDParser` builds a tree of `Reduction` objects
     /// This method can be overridden or changed to process the reductions
     /// Returns `bool` to indicate whether processing should stop (false) or continue (true)
     pub fn process_reduction(&mut self) -> bool {
+        todo!()
+        // let reduction = self.get_current_reduction();
+        // match reduction {
+        //     Some(r) => {
+        //         self.set_current_reduction(r);
+        //         return true;
+        //     },
+        //     None => return false,
+        // }
+
+        // match self.get_current_reduction() {
+        //     Some(reduction) => {
+        //         &mut self.set_current_reduction(reduction);
+        //         return true;
+        //     },
+        //     None => return false,
+
+        // }
 
 
-        true
+
+        // if let Some(reduction) = &self.parser.get_current_reduction() {
+            
+        //     &self.set_current_reduction(reduction);
+        //     return true;
+        // } else {
+        //     return false;
+        // }
+    }
+    fn set_current_reduction(&mut self, reduction: &Reduction) {
+        self.parser.set_current_reduction(reduction);
+    }
+    fn get_current_reduction(&self) -> Option<&Reduction> {
+        self.parser.get_current_reduction()
+    }
+    pub fn get_parse_tree(&self) -> String {
+        let mut tree = String::new();
+        match &self.root {
+            Some(r) => {
+                let f = format!("+-{}\rn", r.rule);
+                tree.push_str(&f);
+                self.draw_reduction(&mut tree, r, 1);
+            },
+            None => { return format!("Error: Parse Tree Not Available."); }
+        }
+        tree
     }
     pub fn draw_reduction(&self, tree: &mut String, reduction: &Reduction, indent: usize) {
         let mut indent_str = String::new();
@@ -144,6 +199,38 @@ impl GOLDParser {
         self.parser.clear();
         self.scopes.clear();
         self.curr_scope = Scope::default();
-        //self.root = Reduction::new(5);
+        self.root = None;
     }
-} 
+    pub fn get_current_token(&self) -> &Token {
+        self.parser.input_tokens.peek().expect("current token from input tokens empty")
+    }
+    pub fn parser(&mut self) -> &mut Parser {
+        &mut self.parser
+    }
+    pub fn source_size(&self) -> usize { self.parser.source.src.len() }
+    pub fn source_pos(&self) -> Position { self.parser.source.pos }
+    pub fn source_abs_pos(&self) -> usize { self.parser.source.get_abs_pos() }
+    
+}
+
+// impl super::RuleHandler for ProductionRule {
+//     type Item = GOLDParser;
+
+//     fn execute(&self) {
+//         todo!()
+//     }
+
+//     fn rule(&self) -> &str {
+//         todo!()
+//     }
+// }
+
+#[cfg(test)]
+mod test {
+
+
+    #[test]
+    fn new() {
+
+    }
+}

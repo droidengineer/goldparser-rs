@@ -7,7 +7,7 @@
 
 use crate::engine::SymbolType;
 
-use super::{Position, Symbol, Value, reduction::Reduction};
+use super::{Position, Symbol, reduction::Reduction};
 
 
 #[derive(Debug,Default,Clone)]
@@ -27,11 +27,13 @@ pub struct Token {
     pub symbol: Symbol,
     /// String from the source file that generated this `Token`
     /// For a `Token` created by reduction, this is empty
+    /// TODO Change to &str
     pub text: String,
     /// Data associated with this `Token` is a `Reduction` if present
     pub data: Option<Reduction>,
     pub lalr_state: usize,
-    /// `Position` 
+    /// `Position` can represent either the line/col of this token or the
+    /// start and stop of a span referencing the absolute bufpos.
     pub pos: Position,
 }
 

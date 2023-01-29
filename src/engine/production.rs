@@ -76,22 +76,4 @@ impl Display for ProductionRule {
     }
 }
 
-impl RuleHandler for ProductionRule {
-    fn execute(&self) {
-        todo!()
-    }
 
-    fn rule(&self) -> &str {
-        todo!()
-    }
-}
-
-/// Types implementing the `RuleHandler` 
-/// trait will adjust this method to implement code generation or execution strategies
-pub trait RuleHandler {
-/// This method is called when the parsed program tree is executed. 
-    fn execute(&self);
-    /// Returns the grammar rule associated with this `RuleHandler`
-    fn rule(&self) -> &str;
-
-}

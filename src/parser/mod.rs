@@ -6,6 +6,20 @@ pub mod parser;
 
 pub use parser::GOLDParser;
 
+
+/// Types implementing the `RuleHandler` 
+/// trait will adjust this method to implement code generation or execution strategies
+pub trait RuleHandler {
+    type Item;
+
+    /// This method is called when the parsed program tree is executed. 
+    fn execute(&self) -> std::fmt::Result;
+    /// Returns the grammar rule associated with this `RuleHandler`
+    fn rule(&self) -> &str;
+
+}
+
+
 #[derive(Debug,Clone)]
 pub struct Scope {
     pub parent: String,

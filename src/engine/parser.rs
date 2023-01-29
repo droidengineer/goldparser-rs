@@ -39,6 +39,7 @@ pub trait GPParser {
 
     /// Performs a parse action on the input source. This should continue until the grammar
     /// is accepted or an error occurs. See `parse_step()`
+    /// The grammar source must be loaded before this call.
     fn parse(&mut self) -> GPMessage;
 
     /// If you need something custom start here and have `parse()` call it
@@ -55,10 +56,10 @@ pub trait GPParser {
     /// This version uses a `Stack` to manage nested group elements.
     fn input_tokens(&mut self) -> Token;
 
-    /// Returns `count` characters in a string from the lookahead buffer.
+    /// Returns `count` characters in a `&str` from the lookahead buffer.
     /// These characters are used to create the text stored in a `Token`
     /// `count` should never exceed buffer length
-    fn lookahead(&self, count: usize) -> String;
+    fn lookahead(&self, count: usize) -> &str;
 
     /// Resets the parser to the initial state. The loaded tables are retained.
     /// After this call, the parser will bere ady to start parsing.
@@ -72,6 +73,8 @@ pub trait GPParser {
 
 
 }
+
+
 
 #[derive(Debug,Default)]
 pub enum GPMessage {
@@ -153,7 +156,7 @@ pub struct Parser {
     // Housekeeping
     initialized: bool,
     /// Tokens to be analyzed
-    input_tokens: Stack<Token>,
+    pub input_tokens: Stack<Token>,
     /// Location of last read terminal
     curr_position: Position,
     sys_pos: Position,
@@ -230,20 +233,20 @@ impl Parser {
     pub fn symbol_by_type(&self, kind: SymbolType) -> Option<&Symbol> {
         self.grammar.symbols.get_by_type(kind)
     }
-    pub fn get_current_reduction(&self) -> Option<&Reduction> {
-        match &self.stack.peek().data {
-            Some(r) => Some(&r),
-            None => None,
-        }
-        // if self.have_reduction {
-        //     Some(&self.stack.peek().data?)
-        // } else {
-        //     None
-        // }
+    pub fn get_current_token(&self) -> Option<&Token> {
+        self.input_tokens.peek()
     }
-    pub fn set_current_reduction(&mut self, reduction: Reduction) {
-        if self.have_reduction {
-            self.stack.peek_mut().set_data(&reduction);
+    pub fn get_current_reduction(&self) -> Option<&Reduction> {
+        //if self.have_reduction {
+        self.stack.peek()?.data.as_ref()
+
+    }
+    pub fn set_current_reduction(&mut self, reduction: &Reduction) {
+        // if self.have_reduction {
+        //     // self.stack.peek_mut()?.set_data(&reduction);
+        // }
+        if let Some(peek) = self.stack.peek_mut() {
+            peek.set_data(reduction);
         }
     }
 
@@ -309,7 +312,7 @@ impl GPParser for Parser {
                 done = true;
             
             } else { // a Token is present and can be parsed
-                let mut token = self.input_tokens.peek().clone();
+                let mut token = self.input_tokens.peek().expect("peek with input tokens").clone();
                 let kind = token.kind();
                 self.curr_position = token.pos;
 
@@ -376,13 +379,13 @@ impl GPParser for Parser {
                         reduce_tokens[i] = self.stack.pop();
                     }
                     head = Token::new(rule.head(), String::default());
-                    head.data = Some(Reduction::new(reduce_tokens));
+                    head.data = Some(Reduction::new(rule.to_owned(), reduce_tokens));
                     result = GPParseResult::Reduce;
                 }
                 // execute GOTO action for the rule that was just reduced
                 // peek at LALR Token stack state to get its index, look the state up,
                 // and find the action corresponding to the rule's head symbol
-                let state_index = self.stack.peek().state();
+                let state_index = self.stack.peek().expect("Invalid peek").state();
                 match self.get_lalr_state(state_index)
                                       .find_action(&rule.head())
                                       .cloned()
@@ -431,7 +434,7 @@ impl GPParser for Parser {
         let mut length = 1;
         let mut last_accept_state: i32 = -1;
         let mut last_accept_pos: i32 = -1;
-        let mut target = 0;
+        //let mut target = 0;
         let mut done = false;
 
         while !done {
@@ -445,7 +448,7 @@ impl GPParser for Parser {
                 // appropriate variables so when the algorithm is done, it can return the
                 // proper Token and number of characters
                 Some(index) => { 
-                    target = index as i32;
+                    let target = index as i32;
                     if self.get_dfa_state(index).accept {
                         last_accept_state = target;
                         last_accept_pos = length as i32;
@@ -456,11 +459,11 @@ impl GPParser for Parser {
                 None => { // no edge found. no target state found.
                     if last_accept_state == -1 { // Lexer doesn't recognize the symbol
                         token.symbol = self.symbol_by_type(SymbolType::Error).unwrap().clone();
-                        token.text = <Parser as GPParser>::lookahead(self,1);
+                        token.text = <Parser as GPParser>::lookahead(self,1).to_string();
                     } else { // create Token and read text for Token.
                         // self.text contains the total number of accept characters
                         token.symbol = self.get_dfa_state(last_accept_state as usize).accept_symbol.clone();
-                        token.text = <Parser as GPParser>::lookahead(&self, last_accept_pos as usize);
+                        token.text = <Parser as GPParser>::lookahead(&self, last_accept_pos as usize).to_string();
                     }
                     done = true;
                 }
@@ -472,10 +475,11 @@ impl GPParser for Parser {
         token
     }
 
-    fn lookahead(&self, count: usize) -> String {
+    fn lookahead(&self, count: usize) -> &str {
         let mut ahead = count;
-        if ahead > self.source.buf.len() { ahead = self.source.buf.len(); }
-        self.source.buf.as_str()[0..ahead].to_string()
+        if ahead > self.source.get_buf_len() { ahead = self.source.get_buf_len(); }
+        self.source.get_buf_slice_to(ahead)
+       // self.source.buf.as_str()[0..ahead].to_string()
     }
 
     fn is_initialized(&self) -> bool {

@@ -4,12 +4,14 @@
 use crate::engine::Position;
 
 
+/// Responsible for storage and access of the source buffer, both as unicode `char`
+/// and string represting same. It is naive and has no knowlege about the source.
 #[derive(Default)]
 pub struct SourceReader {
     pub src: Vec<char>,
-    pub buf: String,
-    pub pos: Position,
-    bufpos: usize,
+    buf: String,
+    pub pos: Position,  // line,col position
+    bufpos: usize,      // absolute position
 }
 
 
@@ -25,15 +27,20 @@ impl SourceReader {
         // Autoload from src into buffer
         if count > self.buf.len() {
             println!("Pre-emptively reading {} chars",count-self.buf.len());
-            for n in 0..count-self.buf.len() {
+            for _ in 0..count-self.buf.len() {
                 match self.read() {
-                    Some((i,c)) => self.buf.push(c),
+                    Some((_,c)) => self.buf.push(c),
                     None => panic!("Reading past src vector"),
                 }
             }
             println!("buf: {}",self.buf);
         }
         self.buf.chars().nth(count-1).expect(format!("Problem indexing lookahead buf: {}",count).as_str())
+    }
+    pub fn get_abs_pos(&self) -> usize { self.bufpos }
+    pub fn get_buf_len(&self) -> usize { self.buf.len() }
+    pub fn get_buf_slice_to(&self, end: usize) -> &str {
+        &self.buf[0..end]
     }
     /// Looks into `src` data. Does not change bufpos
     pub fn peek(&mut self, count: usize) -> char {
@@ -84,8 +91,14 @@ impl SourceReader {
     fn inc_bufpos(&mut self) { self.bufpos += 1; }
     fn col(&self) -> usize {self.pos.col()}
     fn line(&self) -> usize {self.pos.line()}
-    fn bufpos(&self) -> usize {self.bufpos}
+    //fn bufpos(&self) -> usize {self.bufpos}
 
+}
+
+impl From<String> for SourceReader {
+    fn from(value: String) -> Self {
+       Self::new(value)
+    }
 }
 
 // impl Default for SourceReader {

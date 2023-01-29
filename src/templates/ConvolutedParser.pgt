@@ -8,10 +8,10 @@ Skeleton program in Rust for the GOLD Parser parser generator system
 by Gian James
 
 Can load an EGT grammar file, a source file in the target language, and
-parse the source against the grammar and generate a parse tree for for
+parse the source against the grammar and generate a parse tree for 
 dumping or executing.
 ##END-NOTES
-##ID-CASE Propercase
+##ID-CASE UPPERCASE
 ##ID-SEPARATOR '_'
 ##ID-SYMBOL-PREFIX 'Symbol'
 ##ID-RULE-PREFIX 'Rule'
@@ -30,6 +30,10 @@ dumping or executing.
 //Output PathBuf      : %OutputPath%
 //Output File         : %OutputFile%
 //Output File Base    : %OutputFileBase%
+
+// This is the output from the compiled grammar tables with the convoluted_rulehandlers.pgt
+pub mod %Name%_rulehandler;
+
 pub struct %Name%Parser {
 ##END-PARAMETERS
     pub parser: GOLDParser,
@@ -59,27 +63,27 @@ impl %Name%Parser {
     }
 ##END-PARAMTERS
 
-    pub fn reduce(&mut self, reduction: &Reduction) -> &Reduction {
-        match reduction.rule.index {
+    pub fn reduce(&mut self, rule: &ProductionRule, tokens: Vec<Token>) -> &Reduction {
+        match rule.index {
 ##RULES
             // %Description%
             %ID% => todo!(),
 ##END-RULES
-            _ => panic!("Rule {} not implemented. The file needs to be updated.", reduction.rule.symbol.to_string()),
+            _ => panic!("Rule {} not implemented. The file needs to be updated.", rule.symbol.to_string()),
         }
     }
     pub fn accept(&mut self, reduction: Reduction) { self.root = reduction; }
 }
 
 // Symbols
-enum SYMBOLS {
+const enum SYMBOLS {
 ##SYMBOLS
     %ID.Padded% = %Value.Padded%, // %Description%
 ##END-SYMBOLS
 }
 
 // RULES
-enum RULES {
+const enum RULES {
 ##RULES
     %ID.Padded% = %Value.Padded%, // %Description%
 ##END-RULES
