@@ -141,7 +141,7 @@ impl GOLDParser {
         for token in &reduction.tokens {
             match token.kind() {
                 SymbolType::NonTerminal => {
-                    let redref = token.data.as_ref().unwrap();
+                    let redref = token.reduction.as_ref().unwrap();
                     let f = format!("{}+-{}\r\n",indent_str,redref.rule);
                     tree.push_str(f.as_str());
                     self.draw_reduction(tree, redref, indent + 1);

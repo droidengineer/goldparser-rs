@@ -5,6 +5,7 @@ Add rule handler map (rule: &str, R: RuleHandler) that maps a "rule" to the
 Cursor Position of &str w/ useful string parsing methods
 Refactor engine::Reduction out and into parser::Reduction for use in template
   bring in 'static lifetime
+Refactor engine::egt and engine::builder into engine::parser
 
   ✅ ☐ 🗹
 

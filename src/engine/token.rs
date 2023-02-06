@@ -11,13 +11,15 @@ use super::{Position, Symbol, reduction::Reduction};
 
 
 #[derive(Debug,Default,Clone)]
-/// Used to represent and organized parsed data.
+/// Used to represent and organized parsed reduction
+//.
 /// Unlike `SymbolTableRecord`s, which are used to represent a category of terminals and
 /// non-terminals, a `Token` represents instances of those symbols. For instance, the 
 /// common "identifier" is a specific type of `Symbol`, but can exist in various forms such
 /// as "Value1", "cat", or "Sacramento", etc.
 /// 
-/// Information that is read from the source text/file is stored into the `data` property
+/// Information that is read from the source text/file is stored into the `reduction
+//` property
 /// which can be modified by the developer.
 /// Contains:
 /// * a `Symbol` representing the `Token`'s parent symbol
@@ -29,8 +31,9 @@ pub struct Token {
     /// For a `Token` created by reduction, this is empty
     /// TODO Change to &str
     pub text: String,
-    /// Data associated with this `Token` is a `Reduction` if present
-    pub data: Option<Reduction>,
+    /// reduction
+    // associated with this `Token` is a `Reduction` if present
+    pub reduction: Option<Reduction>,
     pub lalr_state: usize,
     /// `Position` can represent either the line/col of this token or the
     /// start and stop of a span referencing the absolute bufpos.
@@ -43,20 +46,20 @@ impl Token {
         Token {
             symbol,
             text,
-            data: None,
+            reduction: None,
             lalr_state: 0,
             pos: Position::default(),
         }
     }
     #[inline(always)]
     pub fn has_reduction(&self) -> bool {
-        match self.data {
+        match self.reduction {
             Some(_) => true,
             None => false,
         }
     }
-    pub fn set_data(&mut self, data: &Reduction) {
-        self.data = Some(data.to_owned());
+    pub fn set_reduction(&mut self, reduction: &Reduction) {
+        self.reduction = Some(reduction.to_owned());
     }
     #[inline(always)]
     pub fn kind(&self) -> &SymbolType {
@@ -77,7 +80,7 @@ impl Token {
     #[inline(always)]
     /// You should always call `has_reduction` before this or risk panic
     pub fn reduction(&self) -> &Reduction {
-        self.data.as_ref().unwrap()
+        self.reduction.as_ref().unwrap()
     }
 
 }

@@ -51,10 +51,29 @@ impl SourceReader {
             return char::MAX;
         }
     }
-    /// Works on lookahead buffer `buf`. Consumes characters from `buf`
+    /// Works on lookahead buffer `buf`. Consumes characters from lookahead `buf`
     /// Adjusts `Position` pos to reflect this.
     fn consume_buf(&mut self, count: usize) {
-
+        if count > 0 && count <= self.buf.len() {
+            // adjust position
+            self.buf.chars().for_each(|c| {
+                if c == '\n' {  //0x0A {
+                    if self.pos.col() > 1 {
+                        self.pos.inc_line();
+                    }
+                } else if c == '\r' { //0x0D {
+                    self.pos.inc_line();
+                } else {
+                    self.pos.inc_col();
+                }
+            });
+            // remove the characters
+            let cropped = match self.buf.char_indices().skip(count).next() {
+                Some((pos,_)) => self.buf.split_off(pos), // = &self.buf[pos..],
+                None => String::new(),
+            };
+            self.buf = cropped;
+        }
     }
     /// Mutable read takes next and returns a `char` and the index it was found
     pub fn read(&mut self) -> Option<(usize,char)> {

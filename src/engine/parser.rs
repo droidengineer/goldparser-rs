@@ -1,22 +1,21 @@
-//! GOLD Parser
+//! Parser
 //! 
-//! 
+//! Defines `GPParser` trait, as well as the messages that are passed during lexing and parsing.
 
 
 use std::collections::HashMap;
-use std::fmt::{Display, write};
-use std::{fs, default};
+use std::fmt::{Display};
+use std::{fs};
 use std::path::PathBuf;
-use std::num::ParseIntError;
 
 use super::egt::EnhancedGrammarTable;
 use super::reduction::Reduction;
 use crate::engine::states::ActionType;
-use crate::engine::{LALRState, Stack, Position, Symbol, SymbolType, DFAState, Value};
-use crate::engine::tables::{CharacterSetTable,DFAStateTable,SymbolTable,LALRStateTable,ProductionTable, GroupTable, Table};
+use crate::engine::{LALRState, Stack, Position, Symbol, SymbolType, DFAState};
+use crate::engine::tables::{GroupTable, Table};
 use crate::engine::token::{Token};
 use super::source::SourceReader;
-use super::Builder;
+use super::{Builder, SymbolTable};
 
 /// Trait for exposing granular parsing methods
 pub trait GPParser {
@@ -49,12 +48,12 @@ pub trait GPParser {
     /// 1. Makes a single reduction and pushes a complete `Reduction` object on the stack
     /// 2. Accepts the Token and shifts
     /// 3. Errors and places the expected symbol indices in the Tokens list
-    fn parse_tokens(&mut self, input_tokens: &mut Token) -> GPParseResult;
+    fn parse_token(&mut self, input_tokens: &mut Token) -> GPParseResult;
 
     /// Implements the lookahead DFA for the parser's lexer. A `Token` is generated which is used by the
     /// LALR state machine. Takes into account the lexing mode of the parser.
     /// This version uses a `Stack` to manage nested group elements.
-    fn input_tokens(&mut self) -> Token;
+    fn input_token(&mut self) -> Token;
 
     /// Returns `count` characters in a `&str` from the lookahead buffer.
     /// These characters are used to create the text stored in a `Token`
@@ -121,8 +120,11 @@ impl Display for ParserError {
 /// character table (used by the DFA algorithm) and all other structures and
 /// methods needed to interact with the developer.
 pub struct Parser {
-    /// The grammar the source is written against
+    /// The grammar the source is written against stored in a compiled
+    /// binary called the *Enhanced Grammar Table*
     pub grammar: EnhancedGrammarTable,
+    /// `SourceReader` responsible for opening the source file and maintaining
+    /// the lookahead buffer.
     pub source: SourceReader,
 
     pub properties: HashMap<String,String>,
@@ -140,17 +142,22 @@ pub struct Parser {
 
     // LALR parser
     //pub lalr_states: LRStateTable, // from grammar.lalr_states as Vec<LALRState>
+    /// The index into current LALR State from `grammar.lalr_states`
     pub curr_state: usize,
-    //curr_lalr_state: LALRState,    
+    //curr_lalr_state: LALRState,
+    /// *LALR Parser Stack*  
     pub stack: Stack<Token>,
 
-    // Lexical groups
+    /// Lexical groups
     group: Stack<Token>,
     groups: GroupTable,
 
     // Reductions
+    /// **TODO** For *Reductions*
     expected_symbols: SymbolTable,
+    
     pub have_reduction: bool,
+    /// Controls whether reduced rules should be trimmed
     pub trim_reductions: bool,
 
     // Housekeeping
@@ -238,7 +245,7 @@ impl Parser {
     }
     pub fn get_current_reduction(&self) -> Option<&Reduction> {
         //if self.have_reduction {
-        self.stack.peek()?.data.as_ref()
+        self.stack.peek()?.reduction.as_ref()
 
     }
     pub fn set_current_reduction(&mut self, reduction: &Reduction) {
@@ -246,7 +253,7 @@ impl Parser {
         //     // self.stack.peek_mut()?.set_data(&reduction);
         // }
         if let Some(peek) = self.stack.peek_mut() {
-            peek.set_data(reduction);
+            peek.set_reduction(reduction);
         }
     }
 
@@ -260,7 +267,7 @@ impl GPParser for Parser {
         let mut result = GPMessage::Empty;
 
         while !done {
-            // DFA lexer provides a Token
+            // DFA lexer provides a Token amd :ALR parses Token
             result = self.parse_step();
             match result {
                 GPMessage::Accept => {
@@ -296,10 +303,11 @@ impl GPParser for Parser {
     fn parse_step(&mut self) -> GPMessage {
         let mut result = GPMessage::default();
         let mut done = false;
+        trace!("parse_step()");
 
         while !done {
             if self.input_tokens.len() == 0 { // get next Token from DFA lexer
-                let token = self.input_tokens();
+                let token = self.input_token();
                 let kind = token.kind().clone();
                 self.input_tokens.push(token);
 
@@ -331,40 +339,50 @@ impl GPParser for Parser {
                         done = true;
                     },
                     _ => {  // LALR parsing of the input Token
-                        let parsemsg = self.parse_tokens(&mut token);
+                        let parsemsg = self.parse_token(&mut token);
                         match parsemsg {
                             // TODO I think I have to do something here
-
+                            GPParseResult::SyntaxError => {
+                                println!("Syntax error on parse_token()");
+                            },
+                            // GPParseResult::Reduce => {
+                            //     println!("LALR parser return Reduce");
+                            // },
                             _ => { // fallthru includes reduce/eliminated
                                    // shift, and trim-reduced
                                    // do nothing
+                                   println!("{:?}",parsemsg);
                             },
                         }
-
-
                     },
                 }
-
             }
         }
 
         result
     }
 
-    fn parse_tokens(&mut self, input_tokens: &mut Token) -> GPParseResult {
+    fn parse_token(&mut self, input_token: &mut Token) -> GPParseResult {
         let mut result = GPParseResult::Undefined;
         self.have_reduction = false;
-        let parent_symbol = &input_tokens.symbol;
+        let parent_symbol = &input_token.symbol;
         let parse_action = self.get_lalr_state(self.curr_state)
                                             .find_action(parent_symbol)
                                             .expect("Problems fetching LALRAction from LALRState");
         match parse_action.action {
+            // Creates a new reduction. Pops all the terminals and non-terminals for
+            // this rule and push the most left non-terminal.
             ActionType::Reduce => {
                 // This section of the algorithm will reduce the rule specified by action.action
                 // Produce a reduction - remove as many Tokens as members in the rule and push
                 // a non-terminal Token
                 let rule = &self.grammar.productions[parse_action.target_idx];
+                // Create a new non-terminal to represent the reduction
                 let mut head = Token::default();
+                
+                // If the rule has only a non-terminal then we don't create a reduction
+                // node for this rule in the tree since its not useful. If the user enabled 
+                // trimming it is used here.
                 if self.trim_reductions && rule.has_only_nonterminal() {
                     // The current rule consists of a single non-terminal and can be trimmed from
                     // the parse tree
@@ -373,13 +391,14 @@ impl GPParser for Parser {
                     result = GPParseResult::ReduceTrimmed;
                 } else { // create a new reduction for the current rule
                     self.have_reduction = true;
-                    let n = rule.symbols.len();
+                    let n = rule.symbols.len(); // n - 1;
                     let mut reduce_tokens: Vec<Token> = vec![];
-                    for i in (n-1)..0 {
+                    // pop the tokens off the stack for the reduced rule
+                    for i in n..0 {
                         reduce_tokens[i] = self.stack.pop();
                     }
                     head = Token::new(rule.head(), String::default());
-                    head.data = Some(Reduction::new(rule.to_owned(), reduce_tokens));
+                    head.reduction = Some(Reduction::new(rule.to_owned(), reduce_tokens));
                     result = GPParseResult::Reduce;
                 }
                 // execute GOTO action for the rule that was just reduced
@@ -403,12 +422,14 @@ impl GPParser for Parser {
                 self.have_reduction = true;
                 result = GPParseResult::Accept;
             },
+            // Pushes current token onto the stack
             ActionType::Shift  => {
                 // Shift to target state and push the current Token.
                 self.curr_state = parse_action.target_idx;  //self.get_lalr_state(parse_action.target_idx);
-                input_tokens.lalr_state = self.curr_state;
-                self.input_tokens.push(input_tokens.clone());
+                input_token.lalr_state = self.curr_state;
+                self.input_tokens.push(input_token.clone());
                 result = GPParseResult::Shift;
+                debug!("Parser shifted to state {}",input_token.lalr_state)
             },
             ActionType::Undefined |
             ActionType::Goto  => {
@@ -428,7 +449,7 @@ impl GPParser for Parser {
         result
     }
 
-    fn input_tokens(&mut self) -> Token {
+    fn input_token(&mut self) -> Token {
         let mut token = Token::default();
         let mut curr_state = self.grammar.initial_states.dfa as usize;
         let mut length = 1;
@@ -438,7 +459,8 @@ impl GPParser for Parser {
         let mut done = false;
 
         while !done {
-            //if let ch = self.lookahead(length) {
+            // Search all the branches of the current DFA state for the next
+            // character in the input stream. If found, the target state is returned.
             let ch = self.lookahead(length);
             // Checks whether an edge was found from the `curr_state`. If so, the state and
             // `curr_pos` advances. Else, quit main loop and report Token found. If the
@@ -464,6 +486,7 @@ impl GPParser for Parser {
                         // self.text contains the total number of accept characters
                         token.symbol = self.get_dfa_state(last_accept_state as usize).accept_symbol.clone();
                         token.text = <Parser as GPParser>::lookahead(&self, last_accept_pos as usize).to_string();
+                        println!("Last accept DFA State: {last_accept_state} Position: {last_accept_pos}");
                     }
                     done = true;
                 }
@@ -472,6 +495,7 @@ impl GPParser for Parser {
             
         }
         token.pos = self.source.pos;
+        println!("Span: {}  {length} {:?}",self.source.pos.col(),token);
         token
     }
 
@@ -513,31 +537,79 @@ impl GPParser for Parser {
 
 
 
-
-
 #[cfg(test)]
 pub mod test {
-    use crate::engine::parser::GPParser;
+    use crate::engine::{parser::GPParser, SymbolType};
 
     use super::Parser;
 
 
     #[test]
+    fn parse_token() {
+        let mut parser = gen_loaded_parser();
+        let mut tok = parser.input_token();
+        parser.input_tokens.push(tok);
+        tok = parser.input_tokens.peek().expect("peek").clone();
+
+        debug!("Parsing Token({})", tok.text());
+        match parser.parse_token(&mut tok) {
+            i@_ => println!("{:?}",i)
+        }
+    }
+    #[test]
+    fn input_token() {
+        let mut parser = gen_loaded_parser();
+        //assert!(parser.get_current_token());
+        //let mut tokens: Vec<Token> = vec![];
+
+        //println!("{:?}",parser.get_current_token());
+        info!("Starting...");
+     //   loop {
+            let mut tok = parser.input_token();
+            debug!("Token found: {} {}",tok.name(),tok.pos.to_string());
+            if tok.kind() == &SymbolType::EndOfFile ||
+                tok.kind() == &SymbolType::Error {
+                //break;
+            }
+            parser.input_tokens.push(tok.to_owned());
+            //parser.input_tokens.push(tok.to_owned());
+            //tok = parser.input_tokens.pop();
+            //let result = parser.parse_tokens(&mut tok);
+            //debug!("Parse results: {:?}", result);
+    //    }
+        debug!("Pushed {} tokens. {:?}",parser.input_tokens.len(),parser.input_tokens);
+        assert_eq!(&tok.text, "assign");
+    }
+    #[test]
     fn new() {
-        let parser = Parser::new(r"D:\Users\Gian\prog\repos\RUST\goldparser-rs\.ref\goldparser-test-new.egt".to_string());
+        let parser = Parser::new(crate::test::GP_TEST_EGT.to_string());
         println!("About:\n{}",parser.about());
         assert_eq!(parser.grammar.property("Name"),"BADASS");
     }
     #[test]
     fn load_source() {
-        let mut parser = Parser::new(r"D:\Users\Gian\prog\repos\RUST\goldparser-rs\.ref\goldparser-test-new.egt".to_string());
-        parser.load_source(r"D:\Users\Gian\prog\repos\RUST\goldparser-rs\.ref\goldparser-test.asm".to_string());
-    
-        println!("{}",parser.version());
-        println!("Source length: {}", parser.source.len());
-        println!("Source:\n{}",parser.source.to_string());
-
+        let mut parser = Parser::new(crate::test::GP_TEST_EGT.to_string());
+        if let Ok(_) = parser.load_source(crate::test::GP_TEST_SRC.to_string()) {
+            println!("{}",parser.version());
+            println!("Source length: {}", parser.source.len());
+            println!("Source:\n{}",parser.source.to_string());
+        } else {
+            println!("Error loading source");
+        }
     }
 
+    fn gen_loaded_parser<'test>() -> Parser {
+        crate::test::init_logger();
+
+        let mut parser = Parser::new(crate::test::GP_SIMPLE_EGT.to_string());
+        if let Ok(_) = parser.load_source(crate::test::GP_SIMPLE_SRC.to_string()) {
+            // println!("{}",parser.version());
+            // println!("Source length: {}", parser.source.len());
+            // println!("Source:\n{}",parser.source.to_string());
+        } else {
+            println!("Error loading source");
+        }
+        parser       
+    }
 
 }

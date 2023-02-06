@@ -1,6 +1,7 @@
 
 // #[macro_use] extern crate enum_primitive;
 // extern crate num_traits;
+#[macro_use] extern crate log;
 
 use std::{env, path::PathBuf, process};
 
@@ -27,6 +28,9 @@ e.g. egtutils rules mygrammar.egt
 
 
 fn main() {
+    env_logger::init();
+    info!("Starting...");
+    
     let args: Vec<String> = env::args().collect();
     if args.len() != 3 {println!("Wrong number of arguments.\n{}", PROG_INFO); process::exit(0);}
     let cmd = &args[1];
