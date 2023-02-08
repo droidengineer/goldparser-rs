@@ -53,7 +53,7 @@ impl SourceReader {
     }
     /// Works on lookahead buffer `buf`. Consumes characters from lookahead `buf`
     /// Adjusts `Position` pos to reflect this.
-    fn consume_buf(&mut self, count: usize) {
+    pub fn consume_buf(&mut self, count: usize) {
         if count > 0 && count <= self.buf.len() {
             // adjust position
             self.buf.chars().for_each(|c| {

@@ -301,12 +301,13 @@ impl GPParser for Parser {
     }
 
     fn parse_step(&mut self) -> GPMessage {
-        let mut result = GPMessage::default();
+        let mut result = GPMessage::Empty;
         let mut done = false;
         trace!("parse_step()");
 
         while !done {
             if self.input_tokens.len() == 0 { // get next Token from DFA lexer
+                trace!("Getting token from DFA");
                 let token = self.input_token();
                 let kind = token.kind().clone();
                 self.input_tokens.push(token);
@@ -320,12 +321,14 @@ impl GPParser for Parser {
                 done = true;
             
             } else { // a Token is present and can be parsed
+                trace!("Token is present");
                 let mut token = self.input_tokens.peek().expect("peek with input tokens").clone();
                 let kind = token.kind();
                 self.curr_position = token.pos;
 
                 match kind {
                     SymbolType::Noise => {  // whitespace and other ignorables
+                        trace!("SymbolType::Noise");
                         self.input_tokens.pop();
                     },
                     SymbolType::EndOfFile => { 
@@ -339,11 +342,15 @@ impl GPParser for Parser {
                         done = true;
                     },
                     _ => {  // LALR parsing of the input Token
+                        trace!("Parsing input token");
                         let parsemsg = self.parse_token(&mut token);
                         match parsemsg {
                             // TODO I think I have to do something here
+                            GPParseResult::Shift => {
+                                self.input_tokens.pop();
+                            },
                             GPParseResult::SyntaxError => {
-                                println!("Syntax error on parse_token()");
+                                panic!("Syntax error on parse_token()");
                             },
                             // GPParseResult::Reduce => {
                             //     println!("LALR parser return Reduce");
@@ -351,7 +358,7 @@ impl GPParser for Parser {
                             _ => { // fallthru includes reduce/eliminated
                                    // shift, and trim-reduced
                                    // do nothing
-                                   println!("{:?}",parsemsg);
+                                   //println!("{:?}",parsemsg);
                             },
                         }
                     },
@@ -363,6 +370,7 @@ impl GPParser for Parser {
     }
 
     fn parse_token(&mut self, input_token: &mut Token) -> GPParseResult {
+        trace!("parse_token({})",input_token.text());
         let mut result = GPParseResult::Undefined;
         self.have_reduction = false;
         let parent_symbol = &input_token.symbol;
@@ -373,6 +381,7 @@ impl GPParser for Parser {
             // Creates a new reduction. Pops all the terminals and non-terminals for
             // this rule and push the most left non-terminal.
             ActionType::Reduce => {
+                trace!("ActionType::Reduce");
                 // This section of the algorithm will reduce the rule specified by action.action
                 // Produce a reduction - remove as many Tokens as members in the rule and push
                 // a non-terminal Token
@@ -433,6 +442,7 @@ impl GPParser for Parser {
             },
             ActionType::Undefined |
             ActionType::Goto  => {
+                trace!("ActionType::Undefined|Goto");
                 // Syntax error. Generate a list of expected symbols to report
                 self.expected_symbols.clear();
                 let lrstate = self.get_lalr_state(self.curr_state).actions.clone();
@@ -450,6 +460,7 @@ impl GPParser for Parser {
     }
 
     fn input_token(&mut self) -> Token {
+        trace!("input_token()");
         let mut token = Token::default();
         let mut curr_state = self.grammar.initial_states.dfa as usize;
         let mut length = 1;
@@ -477,6 +488,7 @@ impl GPParser for Parser {
                     }
                     curr_state = target as usize;
                     length += 1;
+                    //println!("");
                 },
                 None => { // no edge found. no target state found.
                     if last_accept_state == -1 { // Lexer doesn't recognize the symbol
@@ -486,11 +498,11 @@ impl GPParser for Parser {
                         // self.text contains the total number of accept characters
                         token.symbol = self.get_dfa_state(last_accept_state as usize).accept_symbol.clone();
                         token.text = <Parser as GPParser>::lookahead(&self, last_accept_pos as usize).to_string();
-                        println!("Last accept DFA State: {last_accept_state} Position: {last_accept_pos}");
                     }
                     done = true;
                 }
             }
+            println!("Current DFA State: {curr_state} Edge: \'{ch}\'\nLast accept DFA State: {last_accept_state} Position: {last_accept_pos}");
 
             
         }
@@ -543,6 +555,39 @@ pub mod test {
 
     use super::Parser;
 
+    #[test]
+    fn parse_step() {
+        let mut parser = gen_loaded_parser();
+        let mut done = false;
+
+        for _ in 0..2 {
+            match parser.parse_step() {
+                super::GPMessage::Accept => done = true,  
+
+                msg@_ => {} //println!("{:?}",msg)}
+            }
+        }
+        //println!("{:?}",gpmsg);
+    }
+    #[test]
+    /// Uses input_token and nested group logic
+    fn produce_token() {
+        let mut nested_group = false;
+        let mut parser = gen_loaded_parser();
+        let mut tok = parser.input_token();
+
+        if nested_group {
+
+        } else {
+            let len = tok.name().len();
+            parser.source.consume_buf(len);
+        }
+        parser.input_tokens.push(tok.to_owned());
+
+        match parser.parse_token(&mut tok) {
+            msg@_ => {}
+        }
+    }
 
     #[test]
     fn parse_token() {
