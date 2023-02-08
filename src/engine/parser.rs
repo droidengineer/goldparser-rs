@@ -571,21 +571,30 @@ pub mod test {
     }
     #[test]
     /// Uses input_token and nested group logic
-    fn produce_token() {
-        let mut nested_group = false;
+    fn test_produce_token() {
         let mut parser = gen_loaded_parser();
-        let mut tok = parser.input_token();
+        let mut done = false;
 
-        if nested_group {
+        while !done {
+            let mut tok = produce_token(&mut parser);
+            parser.curr_position = tok.pos;
+            debug!("{:?}",tok.kind());
+            match tok.kind() {
+                SymbolType::Terminal |
+                SymbolType::Noise => {
+                    trace!("SymbolType::Terminal|Noise");
+                    parser.input_tokens.pop();
+                },
 
-        } else {
-            let len = tok.name().len();
-            parser.source.consume_buf(len);
-        }
-        parser.input_tokens.push(tok.to_owned());
+                _ => match parser.parse_token(&mut tok) {
+                    super::GPParseResult::Shift => {
+                        parser.input_tokens.pop();
+                    }    
+                    super::GPParseResult::Accept => done = true,
+                    msg@_ => { debug!("{:?}",msg);}
+                }
+            }
 
-        match parser.parse_token(&mut tok) {
-            msg@_ => {}
         }
     }
 
@@ -641,6 +650,20 @@ pub mod test {
         } else {
             println!("Error loading source");
         }
+    }
+
+    fn produce_token(parser: &mut Parser) -> crate::engine::token::Token {
+        let mut nested_group = false;
+        let mut tok = parser.input_token();
+
+        if nested_group {
+
+        } else {
+            let len = tok.name().len();
+            parser.source.consume_buf(len);
+        }
+        parser.input_tokens.push(tok.to_owned());
+        tok
     }
 
     fn gen_loaded_parser<'test>() -> Parser {
