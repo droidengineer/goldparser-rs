@@ -145,7 +145,7 @@ pub struct Parser {
     /// The index into current LALR State from `grammar.lalr_states`
     pub curr_state: usize,
     //curr_lalr_state: LALRState,
-    /// *LALR Parser Stack*  
+    /// *LALR Parser Stack* | Will be used during reduction
     pub stack: Stack<Token>,
 
     /// Lexical groups
@@ -219,8 +219,11 @@ impl Parser {
 
     /// Return a single character at `index`. This method will read and fill the
     /// buffer as needed from the `source` buffer.
-    fn lookahead(&mut self, index: usize) -> char {
-        self.source.lookahead(index)
+    fn lookahead(&mut self, index: usize) -> Option<char> {
+        match self.source.lookahead(index) {
+            '' => None,
+            ch@_ => Some(ch)
+        }
     }
 
     /// Loads the parse tables from the specified `source` as `String`
@@ -255,6 +258,27 @@ impl Parser {
         if let Some(peek) = self.stack.peek_mut() {
             peek.set_reduction(reduction);
         }
+    }
+
+    /// Wraps `<GPParser>::input_token`, manages group blocks, consumes
+    /// the lookahead buffer and //pushes the token onto the `input_tokens` stack.
+    pub fn produce_token(&mut self) -> Token {
+        trace!("produce_token");
+        let mut nested_group = false;
+        let mut tok = self.input_token();
+        debug!("Token: \'{}\'",tok.text());
+
+        
+
+        if nested_group {
+
+        } else {
+            let len = tok.text().len();
+            self.source.consume_buf(len);
+        }
+        //self.input_tokens.push(tok.to_owned());
+        //debug!("Pushed {} onto input token queue.",tok.text());
+        tok       
     }
 
 }
@@ -308,13 +332,13 @@ impl GPParser for Parser {
         while !done {
             if self.input_tokens.len() == 0 { // get next Token from DFA lexer
                 trace!("Getting token from DFA");
-                let token = self.input_token();
-                let kind = token.kind().clone();
-                self.input_tokens.push(token);
+                let token = self.produce_token();
+                let kind = token.kind();
+                //self.input_tokens.push(token);
 
                 // handle case where an unterminated comment block consumes program
-                if kind == SymbolType::EndOfFile && self.group.is_empty() {
-                    result = GPMessage::GroupError;
+                if *kind == SymbolType::EndOfFile && self.group.is_empty() {
+                    result = GPMessage::Empty;
                 } else { // a good Token was read
                     result = GPMessage::TokenRead;
                 }
@@ -335,6 +359,8 @@ impl GPParser for Parser {
                         if !self.group.is_empty() { // runaway group
                             result = GPMessage::GroupError;
                             done = true;
+                        } else  {
+                            result = GPMessage::Empty;
                         }
                     },
                      SymbolType::Error => {
@@ -428,17 +454,19 @@ impl GPParser for Parser {
 
             },
             ActionType::Accept => {
+                trace!("ActionType::Accept");
                 self.have_reduction = true;
                 result = GPParseResult::Accept;
             },
             // Pushes current token onto the stack
             ActionType::Shift  => {
+                trace!("ActionType::Shift");
                 // Shift to target state and push the current Token.
                 self.curr_state = parse_action.target_idx;  //self.get_lalr_state(parse_action.target_idx);
                 input_token.lalr_state = self.curr_state;
                 self.input_tokens.push(input_token.clone());
                 result = GPParseResult::Shift;
-                debug!("Parser shifted to state {}",input_token.lalr_state)
+                debug!("Pushed {} onto input stack and Parser shifted to state {}",input_token.text(),input_token.lalr_state)
             },
             ActionType::Undefined |
             ActionType::Goto  => {
@@ -470,9 +498,17 @@ impl GPParser for Parser {
         let mut done = false;
 
         while !done {
+            let mut ch = '';
             // Search all the branches of the current DFA state for the next
             // character in the input stream. If found, the target state is returned.
-            let ch = self.lookahead(length);
+            //let ch = self.lookahead(length);
+            if let Some(c) = self.lookahead(length) {
+                ch = c;
+            } else {
+                //done = true;
+                token.symbol.kind = SymbolType::EndOfFile;
+                break;
+            }
             // Checks whether an edge was found from the `curr_state`. If so, the state and
             // `curr_pos` advances. Else, quit main loop and report Token found. If the
             // last_accept_state is -1, then no match found and the Error Token is created.
@@ -485,10 +521,11 @@ impl GPParser for Parser {
                     if self.get_dfa_state(index).accept {
                         last_accept_state = target;
                         last_accept_pos = length as i32;
+                        debug!("target state {index} accepts a token");
                     }
                     curr_state = target as usize;
                     length += 1;
-                    //println!("");
+                    debug!("curr_state = {target}");
                 },
                 None => { // no edge found. no target state found.
                     if last_accept_state == -1 { // Lexer doesn't recognize the symbol
@@ -500,6 +537,7 @@ impl GPParser for Parser {
                         token.text = <Parser as GPParser>::lookahead(&self, last_accept_pos as usize).to_string();
                     }
                     done = true;
+                    debug!("done.");
                 }
             }
             println!("Current DFA State: {curr_state} Edge: \'{ch}\'\nLast accept DFA State: {last_accept_state} Position: {last_accept_pos}");
@@ -507,14 +545,17 @@ impl GPParser for Parser {
             
         }
         token.pos = self.source.pos;
-        println!("Span: {}  {length} {:?}",self.source.pos.col(),token);
+        println!("Span: {}:{}  {length} {:?}",self.source.pos.line(),self.source.pos.col(),token);
         token
     }
 
     fn lookahead(&self, count: usize) -> &str {
+        trace!("<GPParser>::lookahead({count})");
         let mut ahead = count;
         if ahead > self.source.get_buf_len() { ahead = self.source.get_buf_len(); }
-        self.source.get_buf_slice_to(ahead)
+        let str = self.source.get_buf_slice_to(ahead);
+        debug!("\'{}\'",str);
+        str
        // self.source.buf.as_str()[0..ahead].to_string()
     }
 
@@ -553,20 +594,42 @@ impl GPParser for Parser {
 pub mod test {
     use crate::engine::{parser::GPParser, SymbolType};
 
-    use super::Parser;
+    use super::{Parser, GPMessage};
 
     #[test]
     fn parse_step() {
         let mut parser = gen_loaded_parser();
         let mut done = false;
 
-        for _ in 0..2 {
+        while !done {
             match parser.parse_step() {
-                super::GPMessage::Accept => done = true,  
+                GPMessage::TokenRead |
+                GPMessage::Reduction => {
+                    debug!("TokenRead/Reduction");
+                },
+                GPMessage::Empty => {
+                    debug!("Reached end of source file.");
+                    done = true;
+                },
+                GPMessage::Accept => {
+                    debug!("Parsed grammar accepted.");
+                    done = true;
+                },
 
-                msg@_ => {} //println!("{:?}",msg)}
+                msg@_ => {    
+                    done = true;
+                    debug!("{:?}",msg);
+                },
             }
+
         }
+        // for _ in 0..2 {
+        //     match parser.parse_step() {
+        //         super::GPMessage::Accept => done = true,  
+
+        //         msg@_ => {} //println!("{:?}",msg)}
+        //     }
+        // }
         //println!("{:?}",gpmsg);
     }
     #[test]
@@ -574,28 +637,50 @@ pub mod test {
     fn test_produce_token() {
         let mut parser = gen_loaded_parser();
         let mut done = false;
+        let mut result = GPMessage::Empty;
 
         while !done {
-            let mut tok = produce_token(&mut parser);
-            parser.curr_position = tok.pos;
-            debug!("{:?}",tok.kind());
-            match tok.kind() {
-                SymbolType::Terminal |
-                SymbolType::Noise => {
-                    trace!("SymbolType::Terminal|Noise");
-                    parser.input_tokens.pop();
-                },
-
-                _ => match parser.parse_token(&mut tok) {
-                    super::GPParseResult::Shift => {
-                        parser.input_tokens.pop();
-                    }    
-                    super::GPParseResult::Accept => done = true,
-                    msg@_ => { debug!("{:?}",msg);}
-                }
-            }
-
+            let tok = produce_token(&mut parser); info!("{:?}",tok.kind());
+            //let tok = produce_token(&mut parser); info!("{:?}",tok.kind());
+            //let tok = produce_token(&mut parser); info!("{:?}",tok.kind());
+            
         }
+            // while !done {
+        //     if parser.input_tokens.len() == 0 {
+        //         let tok = produce_token(&mut parser);
+        //         //parser.curr_position = tok.pos;
+        //         if *tok.kind() == SymbolType::EndOfFile && parser.group.is_empty() {
+        //             result = GPMessage::GroupError;
+        //         } else { // a good Token was read
+        //             result = GPMessage::TokenRead;
+        //         }
+        //         //done = true;
+        //     } else {
+        //         let mut tok = parser.input_tokens.peek().expect("peek with input tokens").clone();
+        //         let kind = tok.kind();
+        //         parser.curr_position = tok.pos;
+
+        //         debug!("{:?}",kind);
+        //         match kind {
+        //             SymbolType::Terminal |
+        //             SymbolType::Noise => {
+        //                 trace!("SymbolType::Terminal|Noise");
+        //                 parser.input_tokens.pop();
+        //             },
+        //             SymbolType::Error => {
+        //                 result = GPMessage::LexicalError;
+        //                 done = true;
+        //             },
+        //             _ => match parser.parse_token(&mut tok) {
+        //                 super::GPParseResult::Shift => {
+        //                     parser.input_tokens.clear();
+        //                 }    
+        //                 super::GPParseResult::Accept => done = true,
+        //                 msg@_ => { debug!("{:?}",msg);}
+        //             }
+        //         }
+        //     }
+        // }
     }
 
     #[test]
@@ -653,16 +738,18 @@ pub mod test {
     }
 
     fn produce_token(parser: &mut Parser) -> crate::engine::token::Token {
+        trace!("<test>::produce_token");
         let mut nested_group = false;
         let mut tok = parser.input_token();
-
+        debug!("Token: \'{}\'",tok.text());
         if nested_group {
 
         } else {
-            let len = tok.name().len();
+            let len = tok.text().len();
             parser.source.consume_buf(len);
         }
         parser.input_tokens.push(tok.to_owned());
+        debug!("Pushed {} onto input token queue.",tok.text());
         tok
     }
 

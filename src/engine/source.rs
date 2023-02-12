@@ -26,14 +26,14 @@ impl SourceReader {
         if self.src.len() == 0 { panic!("Attemped lookahead on unloaded source. Load source file before calling lookahead()"); }
         // Autoload from src into buffer
         if count > self.buf.len() {
-            println!("Pre-emptively reading {} chars",count-self.buf.len());
+            debug!("Pre-emptively reading {} chars",count-self.buf.len());
             for _ in 0..count-self.buf.len() {
                 match self.read() {
                     Some((_,c)) => self.buf.push(c),
-                    None => panic!("Reading past src vector"),
+                    None => return '', //panic!("Reading past src vector"),
                 }
             }
-            println!("buf: {}",self.buf);
+            debug!("buf: \'{}\'",self.buf);
         }
         self.buf.chars().nth(count-1).expect(format!("Problem indexing lookahead buf: {}",count).as_str())
     }
@@ -54,6 +54,7 @@ impl SourceReader {
     /// Works on lookahead buffer `buf`. Consumes characters from lookahead `buf`
     /// Adjusts `Position` pos to reflect this.
     pub fn consume_buf(&mut self, count: usize) {
+        trace!("consume_buf({count})");
         if count > 0 && count <= self.buf.len() {
             // adjust position
             self.buf.chars().for_each(|c| {
@@ -67,20 +68,26 @@ impl SourceReader {
                     self.pos.inc_col();
                 }
             });
+            debug!("Pre-crop: \'{}\'",self.buf);
             // remove the characters
             let cropped = match self.buf.char_indices().skip(count).next() {
                 Some((pos,_)) => self.buf.split_off(pos), // = &self.buf[pos..],
                 None => String::new(),
             };
             self.buf = cropped;
+            debug!("Post-crop: \'{}\'",self.buf);
+        } else {
+            error!("Buf len is {} but count is {count}",self.buf.len());
         }
     }
     /// Mutable read takes next and returns a `char` and the index it was found
     pub fn read(&mut self) -> Option<(usize,char)> {
+        trace!("read()");
         if self.bufpos >= self.src.len() { return None; }
 
         let oldpos = self.bufpos;
         self.inc_bufpos();
+        debug!("=> \'{}\'", self.src[oldpos]);
         Some((oldpos, self.src[oldpos]))
     }
     pub fn clear(&mut self) {
