@@ -15,7 +15,7 @@
 
 //#[macro_use] extern crate enum_primitive;
 extern crate num_traits;
-
+extern crate alloc;
 
 use std::{ops::Deref, time::Instant, fmt::Error};
 use core::{fmt::Debug};

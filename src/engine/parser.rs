@@ -421,7 +421,7 @@ impl GPParser for Parser {
                 if self.trim_reductions && rule.has_only_nonterminal() {
                     // The current rule consists of a single non-terminal and can be trimmed from
                     // the parse tree
-                    head = self.stack.pop();
+                    head = self.stack.pop().expect("empty stack");
                     head.symbol = rule.head.to_owned();
                     result = GPParseResult::ReduceTrimmed;
                 } else { // create a new reduction for the current rule
@@ -430,7 +430,7 @@ impl GPParser for Parser {
                     let mut reduce_tokens: Vec<Token> = vec![];
                     // pop the tokens off the stack for the reduced rule
                     for i in n..0 {
-                        reduce_tokens[i] = self.stack.pop();
+                        reduce_tokens[i] = self.stack.pop().expect("empty stack");
                     }
                     head = Token::new(rule.head.to_owned(), String::from(""));
                     //head.reduction = Some(Reduction::new(rule, reduce_tokens));
@@ -633,12 +633,12 @@ pub mod test {
         let mut done = false;
         let mut result = GPMessage::Empty;
 
-        while !done {
+        //while !done {
             let tok = produce_token(&mut parser); info!("{:?}",tok.kind());
-            //let tok = produce_token(&mut parser); info!("{:?}",tok.kind());
-            //let tok = produce_token(&mut parser); info!("{:?}",tok.kind());
+            let tok = produce_token(&mut parser); info!("{:?}",tok.kind());
+            let tok = produce_token(&mut parser); info!("{:?}",tok.kind());
             
-        }
+        //}
             // while !done {
         //     if parser.input_tokens.len() == 0 {
         //         let tok = produce_token(&mut parser);
