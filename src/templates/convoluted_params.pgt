@@ -1,0 +1,17 @@
+
+
+
+
+/// Symbols are defined here as ...
+enum Symbols {
+##SYMBOLS
+    %ID.Padded% = %Value.Padded%, // %Description%
+##END-SYMBOLS
+}
+
+/// Each `Rule` is defined here
+enum Rules {
+##RULES
+    %ID.Padded% = %Value.Padded%, // %Description%
+##END-RULES
+}

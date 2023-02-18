@@ -11,7 +11,7 @@ use std::path::PathBuf;
 use super::egt::EnhancedGrammarTable;
 use super::reduction::Reduction;
 use crate::engine::states::ActionType;
-use crate::engine::{LALRState, Stack, Position, Symbol, SymbolType, DFAState};
+use crate::engine::{LALRState, Stack, Position, Symbol, SymbolType, DFAState, reduction};
 use crate::engine::tables::{GroupTable, Table};
 use crate::engine::token::{Token};
 use super::source::SourceReader;
@@ -266,14 +266,14 @@ impl Parser {
         trace!("produce_token");
         let mut nested_group = false;
         let mut tok = self.input_token();
-        debug!("Token: \'{}\'",tok.text());
+        debug!("Token: \'{}\'",&tok.text);
 
         
 
         if nested_group {
 
         } else {
-            let len = tok.text().len();
+            let len = tok.text.len();
             self.source.consume_buf(len);
         }
         //self.input_tokens.push(tok.to_owned());
@@ -396,7 +396,7 @@ impl GPParser for Parser {
     }
 
     fn parse_token(&mut self, input_token: &mut Token) -> GPParseResult {
-        trace!("parse_token({})",input_token.text());
+        trace!("parse_token({})",&input_token.text);
         let mut result = GPParseResult::Undefined;
         self.have_reduction = false;
         let parent_symbol = &input_token.symbol;
@@ -422,7 +422,7 @@ impl GPParser for Parser {
                     // The current rule consists of a single non-terminal and can be trimmed from
                     // the parse tree
                     head = self.stack.pop();
-                    head.symbol = rule.head();
+                    head.symbol = rule.head.to_owned();
                     result = GPParseResult::ReduceTrimmed;
                 } else { // create a new reduction for the current rule
                     self.have_reduction = true;
@@ -432,8 +432,9 @@ impl GPParser for Parser {
                     for i in n..0 {
                         reduce_tokens[i] = self.stack.pop();
                     }
-                    head = Token::new(rule.head(), String::default());
-                    head.reduction = Some(Reduction::new(rule.to_owned(), reduce_tokens));
+                    head = Token::new(rule.head.to_owned(), String::from(""));
+                    //head.reduction = Some(Reduction::new(rule, reduce_tokens));
+                    head.reduction = Some(reduction::reduce(rule, reduce_tokens));
                     result = GPParseResult::Reduce;
                 }
                 // execute GOTO action for the rule that was just reduced
@@ -466,7 +467,7 @@ impl GPParser for Parser {
                 input_token.lalr_state = self.curr_state;
                 self.input_tokens.push(input_token.clone());
                 result = GPParseResult::Shift;
-                debug!("Pushed {} onto input stack and Parser shifted to state {}",input_token.text(),input_token.lalr_state)
+                debug!("Pushed {} onto input stack and Parser shifted to state {}",input_token.text,input_token.lalr_state)
             },
             ActionType::Undefined |
             ActionType::Goto  => {
@@ -529,11 +530,11 @@ impl GPParser for Parser {
                 },
                 None => { // no edge found. no target state found.
                     if last_accept_state == -1 { // Lexer doesn't recognize the symbol
-                        token.symbol = self.symbol_by_type(SymbolType::Error).unwrap().clone();
+                        token.symbol = self.symbol_by_type(SymbolType::Error).unwrap().to_owned();
                         token.text = <Parser as GPParser>::lookahead(self,1).to_string();
                     } else { // create Token and read text for Token.
                         // self.text contains the total number of accept characters
-                        token.symbol = self.get_dfa_state(last_accept_state as usize).accept_symbol.clone();
+                        token.symbol = self.get_dfa_state(last_accept_state as usize).accept_symbol.to_owned();
                         token.text = <Parser as GPParser>::lookahead(&self, last_accept_pos as usize).to_string();
                     }
                     done = true;
@@ -603,9 +604,9 @@ pub mod test {
 
         while !done {
             match parser.parse_step() {
-                GPMessage::TokenRead |
+                GPMessage::TokenRead => debug!("TokenRead"),
                 GPMessage::Reduction => {
-                    debug!("TokenRead/Reduction");
+                    debug!("Reduction");
                 },
                 GPMessage::Empty => {
                     debug!("Reached end of source file.");
@@ -623,14 +624,7 @@ pub mod test {
             }
 
         }
-        // for _ in 0..2 {
-        //     match parser.parse_step() {
-        //         super::GPMessage::Accept => done = true,  
 
-        //         msg@_ => {} //println!("{:?}",msg)}
-        //     }
-        // }
-        //println!("{:?}",gpmsg);
     }
     #[test]
     /// Uses input_token and nested group logic
@@ -690,7 +684,7 @@ pub mod test {
         parser.input_tokens.push(tok);
         tok = parser.input_tokens.peek().expect("peek").clone();
 
-        debug!("Parsing Token({})", tok.text());
+        debug!("Parsing Token({})", tok.text);
         match parser.parse_token(&mut tok) {
             i@_ => println!("{:?}",i)
         }
@@ -741,15 +735,15 @@ pub mod test {
         trace!("<test>::produce_token");
         let mut nested_group = false;
         let mut tok = parser.input_token();
-        debug!("Token: \'{}\'",tok.text());
+        debug!("Token: \'{}\'",tok.text);
         if nested_group {
 
         } else {
-            let len = tok.text().len();
+            let len = tok.text.len();
             parser.source.consume_buf(len);
         }
         parser.input_tokens.push(tok.to_owned());
-        debug!("Pushed {} onto input token queue.",tok.text());
+        debug!("Pushed {} onto input token queue.",tok.text);
         tok
     }
 

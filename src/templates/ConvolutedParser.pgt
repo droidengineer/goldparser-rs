@@ -4,32 +4,28 @@
 ##AUTHOR 'Gian James'
 ##FILE-EXTENSION 'rs'
 ##NOTES
-Skeleton program in Rust for the GOLD Parser parser generator system
-by Gian James
-
-Can load an EGT grammar file, a source file in the target language, and
-parse the source against the grammar and generate a parse tree for 
-dumping or executing.
+This template creates a skeleton parser for your language.
 ##END-NOTES
 ##ID-CASE UPPERCASE
 ##ID-SEPARATOR '_'
 ##ID-SYMBOL-PREFIX 'Symbol'
 ##ID-RULE-PREFIX 'Rule'
+// This is a skeleton file. It will not parse as is. 
 
-
-// Generated parser class for
+/* Generated parser class for
 ##PARAMETERS
-//Name                : %Name%
-//Version             : %Version%
-//Author              : %Author%
-//About               : %About%
-//Case Sensitive      : %CaseSensitive%
+Name                : %Name%
+Version             : %Version%
+Author              : %Author%
+About               : %About%
+Case Sensitive      : %CaseSensitive%
 #//Start Symbol        : %StartSymbol%
 
-//Output File PathBuf : %OutputFilePath%
-//Output PathBuf      : %OutputPath%
-//Output File         : %OutputFile%
-//Output File Base    : %OutputFileBase%
+Output File PathBuf : %OutputFilePath%
+Output PathBuf      : %OutputPath%
+Output File         : %OutputFile%
+Output File Base    : %OutputFileBase%
+*/
 
 // This is the output from the compiled grammar tables with the convoluted_rulehandlers.pgt
 pub mod %Name%_rulehandler;

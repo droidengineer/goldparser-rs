@@ -14,36 +14,21 @@ use std::{fmt::Display};
 
 use super::{Symbol, SymbolType, SymbolTable, tables::Table};
 
-// pub struct ProductionRecord {
-//     /// This parameter holds the index of the rule in the `RuleTable`. The resulting rule should be stored at this Index.
-//     pub index: u16,
-//     /// Each rule derives a single nonterminal symbol (Head). This field contains the index of the symbol in the `SymbolTable`
-//     pub nonterminal: u16,
-//     /// The remaining entries in the record will contain a series of indexes to symbols in the `SymbolTable`. 
-//     /// These constitute the symbols, both terminals and nonterminals, that define the rule. 
-//     /// There can be 0 or more total symbols. Also known as a `Handle`
-//     pub symbols: Vec<u16>,
-// }
-
-// impl std::fmt::Display for ProductionRecord {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         let disp = format!("@{:04X} Head Index: {} Extra: {:?}",
-//             self.index, self.nonterminal, self.symbols);
-//         write!(f,"{}", disp)
-//     }
-// }
-
-
-// impl ProductionRecord {
-//     pub fn new(index: u16, nonterminal: u16, symbols: Vec<u16>) -> Self {
-//         ProductionRecord { index, nonterminal, symbols }
-//     }
-
-// }
+pub use ProductionRule as Rule;
 
 #[derive(Debug,Default,Clone)]
-/// Represents the logical structures of the grammar. Productions consist of a head (nonterminal) followed
-/// by a series of both nonterminals and terminals.
+/// Represents the  
+/// 
+/// Each rule consists of a series of `Symbol`s, both terminals and nonterminals,
+/// and the single nonterminal (head) that the rule defines. Rules are not
+/// creatable during runtime but are instead accessed through the `GOLDParser`'s
+/// `RuleTable` that was built from reading the grammar's **EGT**.
+/// * `head` is the nonterminal `Symbol` that the rule defines
+/// * `symbols` is a `SymbolTable` of terminals and nonterminals
+/// * `index` is this rule's index in the `GOLDParser.RuleTable` 
+/// 
+/// Symbols of a rule e.g. 'Identifier' '=' 'Expression' | 
+/// Tokens of a rule e.g. variable1 = (variable1*0.025)
 pub struct ProductionRule {
     pub index: usize,
     pub head: Symbol,
@@ -58,13 +43,15 @@ impl ProductionRule {
     pub fn has_only_nonterminal(&self) -> bool {
         self.symbols.len() == 1 && self.symbols[0].kind == SymbolType::NonTerminal
     }
-    pub fn head(&self) -> Symbol {
-        self.head.clone()
+    pub fn head(&self) -> &Symbol {
+        &self.head
     }
+    /// Prints the RHS of the rule
     pub fn handle(&self) -> String {
         //self.symbols.to_string()
         self.symbols.as_handle()
     }
+    /// Prints the *Backus-Naur* representation of the rule
     pub fn to_string(&self) -> String {
         format!("{:16} ::= {}",self.head.name, self.handle())
     }

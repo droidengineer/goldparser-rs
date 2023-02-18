@@ -73,7 +73,7 @@ impl GOLDParser {
             crate::engine::parser::GPMessage::NotLoadedError => todo!(),
             crate::engine::parser::GPMessage::LexicalError => todo!(),
             crate::engine::parser::GPMessage::SyntaxError => {
-                let tokstr = self.get_current_token().text();
+                let tokstr = &self.get_current_token().text;
                 // TODO add error message info
                 
                 false;

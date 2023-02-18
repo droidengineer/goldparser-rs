@@ -2,10 +2,10 @@
 //! 
 //! 
 
-use std::{fmt::Display, ops::{Index, IndexMut}};
+use std::{fmt::Display, };
 
 use enum_primitive::enum_from_primitive;
-use utf16string::{WString, LE};
+//use utf16string::{WString, LE};
 
 //pub use SymbolTableRecord as Symbol;
 
@@ -83,7 +83,7 @@ impl Display for SymbolTableRecord {
 
 #[derive(Debug,Default,Clone)]
 pub struct Symbol {
-    // DEPRECATED
+    // Index into the EGT Symbol Table
     pub index: usize,
     /// Name of the symbol as character or string
     pub name: String,
@@ -92,13 +92,15 @@ pub struct Symbol {
 }
 
 impl Symbol {
-    //pub const DEFAULT: Symbol = Symbol { index: 0, name: "".to_string(), kind: SymbolType::Undefined };
+    //pub const DEFAULT: Symbol = Symbol { index: 0, name: String::from(""), kind: SymbolType::Undefined };
     const QUOTE_CHARS: &str = "|+*?()[]{}<>!";
 
     pub fn new(index: usize, name: String, kind: SymbolType) -> Self {
         Symbol { index, name, kind }
     }
 
+    /// Encapsulates a string with single quotes
+    /// TODO This may be accomplished thru the `String::quote`
     pub fn quote(&self, src: Utf16) -> String {
         let source = src.to_string();
         if source.contains(Self::QUOTE_CHARS) {
@@ -108,6 +110,10 @@ impl Symbol {
         }
     }
 
+    /// Returns the text representation of the symbol as follows:
+    /// * \<NonTerminal\>
+    /// * 'Terminal'
+    /// * (Special)
     pub fn as_handle(&self) -> String {
         match self.kind {
             SymbolType::NonTerminal =>  format!("<{}>", self.name),

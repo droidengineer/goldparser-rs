@@ -1,0 +1,47 @@
+##PARAMETERS
+
+Name                : %Name%
+Version             : %Version%
+Author              : %Author%
+About               : %About%
+Case Sensitive      : %CaseSensitive%
+Start Symbol        : %StartSymbol%
+
+Output File PathBuf : %OutputFilePath%
+Output PathBuf      : %OutputPath%
+Output File         : %OutputFile%
+Output File Base    : %OutputFileBase%
+##START-SYMBOL %StartSymbol%
+
+##END-PARAMETERS
+
+##RULE-TABLE
+Table Count: %Count%
+##RULES
+   Rule %Index%
+      Value: %Value%
+      Nonterminal: %NonterminalIndex%
+      Description: %Description%
+      Symbol Count: %SymbolCount%
+      Rule Symbols:
+##RULE-SYMBOLS
+          %SymbolIndex%
+##END-RULE-SYMBOLS
+##END-RULES
+##END-RULE-TABLE
+
+## constant definitions
+
+### Symbols
+enum Symbols {
+##SYMBOLS
+    %ID.Padded% = %Value.Padded%, // %Description%
+##END-SYMBOLS
+}
+
+// Rules
+enum Rules {
+##RULES
+    %ID.Padded% = %Value.Padded%, // %Description%
+##END-RULES
+}
