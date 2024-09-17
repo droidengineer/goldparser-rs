@@ -51,15 +51,15 @@ impl ProductionRule {
         //self.symbols.to_string()
         self.symbols.as_handle()
     }
-    /// Prints the *Backus-Naur* representation of the rule
-    pub fn to_string(&self) -> String {
-        format!("{:16} ::= {}",self.head.name, self.handle())
-    }
+    //// Prints the *Backus-Naur* representation of the rule
+    // pub fn to_string(&self) -> String {
+    //     format!("{:16} ::= {}",self.head.name, self.handle())
+    // }
 }
 
 impl Display for ProductionRule {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f,"{}", self.to_string())
+        write!(f,"{:16} ::= {}",self.head.name, self.handle())
     }
 }
 
