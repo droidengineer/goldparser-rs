@@ -1,4 +1,4 @@
-//! records/mod.rs
+//! engine/mod.rs
 //! 
 //! Each logical record starts with a byte containing the value 77. This is the ASCII code for the letter "M", 
 //! which, in turn, stands for multitype. So far, this is the only type of record stored in the file; however, 
@@ -17,23 +17,23 @@
 extern crate num_traits;
 extern crate alloc;
 
-use std::{ops::Deref, time::Instant, fmt::Error};
+use std::{time::Instant, fmt::Error};
 use core::{fmt::Debug};
 use core::hash::Hash;
 
-use enum_primitive::{enum_from_primitive};
+use enum_primitive::enum_from_primitive;
 use utf16string::{LE, WString};
 
 //pub use utf16string::WString as WString;
 pub type Utf16 = WString<LE>;
 
 pub mod stack;
-pub mod tables;
-pub mod property;
-pub mod counts;
+pub mod tables; pub mod tables_new;
+//pub mod property;
+//pub mod counts;
 pub mod charset;
 pub mod symbol;
-pub mod group;
+//pub mod group;
 pub mod production;
 pub mod states;
 pub mod token;
@@ -44,17 +44,14 @@ pub mod source;
 pub mod parser;
 
 pub use stack::Stack;
-pub use property::PropertyRecord;
-pub use counts::TableCountsRecord;
 pub use charset::{CharacterSet};
 pub use symbol::{Symbol, SymbolType};
-pub use group::LexicalGroup;
 pub use production::{ProductionRule};
 pub use states::{InitialStatesRecord, DFAState, DFAEdge, LALRState, LALRAction};
 pub use tables::{SymbolTable};
 pub use source::SourceReader;
 pub use parser::Parser;
-pub use egt::EnhancedGrammarTable;
+pub use egt::{EnhancedGrammarTable, TableCounts, LexicalGroup, PropertyRecord};
 pub use builder::Builder;
 
 

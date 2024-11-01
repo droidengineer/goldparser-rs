@@ -16,12 +16,10 @@ pub use parser::GOLDParser;
 
 
 pub mod test {
-    pub const GP_TEST_EGT: &str = r"D:\Users\Gian\prog\repos\RUST\goldparser-rs\.ref\goldparser-test-new.egt";
-    pub const GP_TEST_SRC: &str = r"D:\Users\Gian\prog\repos\RUST\goldparser-rs\.ref\goldparser-test.asm";
-    pub const GP_SIMPLE_EGT: &str = r"D:\Users\Gian\prog\repos\RUST\goldparser-rs\examples\simple.egt";
-    pub const GP_SIMPLE_SRC: &str = r"D:\Users\Gian\prog\repos\RUST\goldparser-rs\examples\simple.src";
-    pub const GP_TINY_EGT: &str = r"D:\Users\Gian\prog\repos\RUST\goldparser-rs\examples\tiny.egt";
-    pub const GP_TINY_SRC: &str = r"D:\Users\Gian\prog\repos\RUST\goldparser-rs\examples\tiny.src";
+    pub const GP_SIMPLE_EGT: &str = r".\examples\simple.egt";
+    pub const GP_SIMPLE_SRC: &str = r".\examples\simple.src";
+    pub const GP_TINY_EGT: &str = r".\examples\tiny.egt";
+    pub const GP_TINY_SRC: &str = r".\examples\tiny.src";
     
     pub fn init_logger() {
         let _ = env_logger::builder()

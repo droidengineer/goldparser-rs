@@ -29,7 +29,7 @@ impl std::fmt::Display for InitialStatesRecord {
     }
 }
 
-#[derive(Debug,Default,Clone)]
+#[derive(Debug,Default,Clone,PartialEq)]
 /// *Represents a state in the Deterministic Finite Automaton which is used by the Tokenizer.*
 /// 
 /// Each record describing a state in the `DFAStateTable` is preceded by a byte field containing the value 68 
@@ -59,7 +59,7 @@ impl DFAState {
         // The edges still contain indexes for targets
         DFAState { index, accept, accept_symbol, edges } 
     }
-    pub fn find_edge(&self, ch: char) -> Option<usize> {
+    pub fn find_edge(&self, ch: u16) -> Option<usize> {
         for edge in &self.edges {
             if edge.chars.contains(ch) {
                 return Some(edge.target_state);
@@ -67,8 +67,6 @@ impl DFAState {
         }
         None
     }
-
-
 }
 impl Display for DFAState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -85,7 +83,7 @@ impl Display for DFAState {
 //#[derive(Debug)]
 
 
-#[derive(Debug,Clone)]
+#[derive(Debug,Clone,PartialEq)]
 /// *Used to represent an edge*
 /// 
 /// Each state in the **DFA** contains multiple edges which link to other states in the automata
@@ -103,13 +101,13 @@ impl DFAEdge {
 }
 impl Display for DFAEdge {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f,"Goto {:4} Character {}",self.target_state,self.chars)
+        write!(f,"Goto {:4} Character {:?}",self.target_state,self.chars)
     }
 }
 
 //---------------------------[LALRState]
 
-#[derive(Debug,Default)]
+#[derive(Debug,Default,Clone,PartialEq)]
 /// Each record describing a state in the LALR State Table is preceded by a byte field containing the value 76 
 /// - the ASCII code for "L". The file will contain one of these records for each state in the table. The 
 /// `TableCountsRecord`, which precedes any LALR records, will contain the total number of states.
@@ -155,8 +153,8 @@ impl Display for LALRState
         // let str : Vec<String> = actions.into_iter()
         //     .map(|a| format!("{}\n",a))
         //     .collect();
-        write!(f,"{}",actions.into_iter()
-                               .map(|a| format!("{}\n",a))
+        write!(f,"{}",actions.iter()
+                               .map(|a| a.to_string())//format!("{}\n",a))
                                .collect::<String>())
         // let disp = format!("@{:04X} LALRState[{}] Actions: {:?}",self.index, self.index, str.iter());
         // write!(f,"{}", disp)
@@ -164,10 +162,10 @@ impl Display for LALRState
 }
 
 
-#[derive(Debug,Clone)]
+#[derive(Debug,Clone,PartialEq)]
 pub struct LALRAction {
     /// Contains the index in the `SymbolTable`
-    /// Optionally could store copy directly here as `entry: Symbol`
+    /// Optionally could store copy directly here as `entry: Symbol` OR &ref
     pub symbol: Symbol,
     /// This field contains a value that represents the action that LALR parsing engine is 
     /// to take based on the symbol. These values are enumerated below

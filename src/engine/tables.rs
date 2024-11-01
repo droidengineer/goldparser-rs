@@ -43,12 +43,12 @@ pub trait Table {
 
 }
 
-#[derive(Debug,Default,Clone)]
+#[derive(Debug,Default,Clone,PartialEq)]
 /// SymbolTable
 pub struct SymbolTable(Vec::<Symbol>);
 //pub struct SymbolTable(HashMap<String, Symbol>);
 impl SymbolTable {
-    const DEFAULT: Symbol = Symbol { index: 0, name: String::new(), kind: SymbolType::Undefined };
+    const DEFAULT: Symbol = Symbol { index: 0, name: String::new(), kind: SymbolType::Error };
 
     pub fn new() -> Self {
         SymbolTable(Vec::new())
@@ -146,235 +146,235 @@ impl Index<usize> for SymbolTable {
 // }
 }
 
-/// LRStateTable
-pub struct LALRStateTable(Vec<LALRState>);
-impl LALRStateTable {
-    pub fn new() -> Self { LALRStateTable(Vec::new()) }
+// /// LRStateTable
+// pub struct LALRStateTable(Vec<LALRState>);
+// impl LALRStateTable {
+//     pub fn new() -> Self { LALRStateTable(Vec::new()) }
 
-}
-impl Table for LALRStateTable {
-    type Item = LALRState;
+// }
+// impl Table for LALRStateTable {
+//     type Item = LALRState;
 
-    fn add(&mut self, state: Self::Item) {
-        self.0.insert(state.index, state);
-    }
-    fn insert(&mut self, index: usize, value: Self::Item) {
-        self.0[index] = value;
-    }
-    fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-    fn get(&self, item: Self::Item) -> Option<&Self::Item> {
-        todo!()
-    }
-    fn len(&self) -> usize {
-        self.0.len()
-    }
-    fn resize(&mut self, sz: usize) {
-        self.0.resize_with(sz, || {Self::Item::default()})
-    }
-    fn clear(&mut self) {
-        self.0.clear();
-    }
-}
+//     fn add(&mut self, state: Self::Item) {
+//         self.0.insert(state.index, state);
+//     }
+//     fn insert(&mut self, index: usize, value: Self::Item) {
+//         self.0[index] = value;
+//     }
+//     fn is_empty(&self) -> bool {
+//         self.0.is_empty()
+//     }
+//     fn get(&self, item: Self::Item) -> Option<&Self::Item> {
+//         todo!()
+//     }
+//     fn len(&self) -> usize {
+//         self.0.len()
+//     }
+//     fn resize(&mut self, sz: usize) {
+//         self.0.resize_with(sz, || {Self::Item::default()})
+//     }
+//     fn clear(&mut self) {
+//         self.0.clear();
+//     }
+// }
 
-impl Display for LALRStateTable {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f,"{}", self.0.iter().map(|d| {format!("{}\n",d)}).collect::<String>())
-    }
-}
+// impl Display for LALRStateTable {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         write!(f,"{}", self.0.iter().map(|d| {format!("{}\n",d)}).collect::<String>())
+//     }
+// }
 
-impl Index<usize> for LALRStateTable {
-    type Output = LALRState;
+// impl Index<usize> for LALRStateTable {
+//     type Output = LALRState;
 
-    fn index(&self, index: usize) -> &Self::Output {
-        &self.0[index]
-    }
-}
-impl IndexMut<usize> for LALRStateTable {
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        &mut self.0[index]
-    }
-}
+//     fn index(&self, index: usize) -> &Self::Output {
+//         &self.0[index]
+//     }
+// }
+// impl IndexMut<usize> for LALRStateTable {
+//     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+//         &mut self.0[index]
+//     }
+// }
 
 /// DFAStateTable
-pub struct DFAStateTable(Vec<DFAState>);
-impl DFAStateTable {
-    pub fn new() -> Self { DFAStateTable(Vec::new()) }
-    pub fn add(&mut self, state: DFAState) {
-        let i = state.index;
-        self.0.insert(i, state);
-    }
-}
+// pub struct DFAStateTable(Vec<DFAState>);
+// impl DFAStateTable {
+//     pub fn new() -> Self { DFAStateTable(Vec::new()) }
+//     pub fn add(&mut self, state: DFAState) {
+//         let i = state.index;
+//         self.0.insert(i, state);
+//     }
+// }
 
-impl Display for DFAStateTable {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f,"{}", self.0.iter().map(|d| {format!("{}\n",d)}).collect::<String>())
-        //write!(f,"{}\n", self.0.iter().map(|s| s.to_string()).collect::<String>())
-    }
-}
+// impl Display for DFAStateTable {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         writeln!(f,"{}", self.0.iter().map(|d| {format!("{}\n",d)}).collect::<String>())
+//         //write!(f,"{}\n", self.0.iter().map(|s| s.to_string()).collect::<String>())
+//     }
+// }
 
-impl Index<usize> for DFAStateTable {
-    type Output = DFAState;
+// impl Index<usize> for DFAStateTable {
+//     type Output = DFAState;
 
-    fn index(&self, index: usize) -> &Self::Output {
-        &self.0[index]
-    }
-}
-impl IndexMut<usize> for DFAStateTable {
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        &mut self.0[index]
-    }
-}
+//     fn index(&self, index: usize) -> &Self::Output {
+//         &self.0[index]
+//     }
+// }
+// impl IndexMut<usize> for DFAStateTable {
+//     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+//         &mut self.0[index]
+//     }
+// }
 
-impl Table for DFAStateTable {
-    type Item = DFAState;
+// impl Table for DFAStateTable {
+//     type Item = DFAState;
 
-    fn add(&mut self, state: Self::Item) {
-        let i = state.index;
-        self.0[i] = state;
-    }
-    fn insert(&mut self, index: usize, value: Self::Item) {
-        self.0[index] = value;
-    }
-    fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-    fn get(&self, item: Self::Item) -> Option<&Self::Item> {
-        todo!()
-    }
-    fn len(&self) -> usize {
-        self.0.len()
-    }
-    fn resize(&mut self, sz: usize) {
-        self.0.resize_with(sz, || {Self::Item::default()})
-    }
-    fn clear(&mut self) {
-        self.0.clear();
-    }
-}
+//     fn add(&mut self, state: Self::Item) {
+//         let i = state.index;
+//         self.0[i] = state;
+//     }
+//     fn insert(&mut self, index: usize, value: Self::Item) {
+//         self.0[index] = value;
+//     }
+//     fn is_empty(&self) -> bool {
+//         self.0.is_empty()
+//     }
+//     fn get(&self, item: Self::Item) -> Option<&Self::Item> {
+//         todo!()
+//     }
+//     fn len(&self) -> usize {
+//         self.0.len()
+//     }
+//     fn resize(&mut self, sz: usize) {
+//         self.0.resize_with(sz, || {Self::Item::default()})
+//     }
+//     fn clear(&mut self) {
+//         self.0.clear();
+//     }
+// }
 
-#[derive(Debug)]
-/// CharacterSetTable
-pub struct CharacterSetTable(Vec<CharacterSet>);
-impl CharacterSetTable {
-    pub fn new() -> Self { CharacterSetTable(Vec::new()) }
-    pub fn add(&mut self, index: usize, chars: CharacterSet) {
-        self.0[index] = chars;
-        //self.0.insert(index, chars);
-    }
-    pub fn len(&self) -> usize { self.0.len() }
-    pub fn resize(&mut self, sz: usize) {
-        self.0.resize(sz, CharacterSet::default())
-    }
-    pub fn contains(&self, charset: CharacterSet) -> bool {
-        self.0.contains(&charset)
-    }
+// #[derive(Debug)]
+// /// CharacterSetTable
+// pub struct CharacterSetTable(Vec<CharacterSet>);
+// impl CharacterSetTable {
+//     pub fn new() -> Self { CharacterSetTable(Vec::new()) }
+//     pub fn add(&mut self, index: usize, chars: CharacterSet) {
+//         self.0[index] = chars;
+//         //self.0.insert(index, chars);
+//     }
+//     pub fn len(&self) -> usize { self.0.len() }
+//     pub fn resize(&mut self, sz: usize) {
+//         self.0.resize(sz, CharacterSet::default())
+//     }
+//     pub fn contains(&self, charset: CharacterSet) -> bool {
+//         self.0.contains(&charset)
+//     }
 
-}
+// }
 
-impl Display for CharacterSetTable {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f,"{}",self.0.iter().map(|c| {c.to_string()}).collect::<String>())
-    }
-}
+// impl Display for CharacterSetTable {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         write!(f,"{}",self.0.iter().map(|c| {c.to_string()}).collect::<String>())
+//     }
+// }
 
-impl Index<usize> for CharacterSetTable {
-    type Output = CharacterSet;
-    /// charset_table[0]
-    fn index(&self, index: usize) -> &CharacterSet {
-        &self.0[index]
-    }
-}
-impl IndexMut<usize> for CharacterSetTable {
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        &mut self.0[index]
-    }
-}
+// impl Index<usize> for CharacterSetTable {
+//     type Output = CharacterSet;
+//     /// charset_table[0]
+//     fn index(&self, index: usize) -> &CharacterSet {
+//         &self.0[index]
+//     }
+// }
+// impl IndexMut<usize> for CharacterSetTable {
+//     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+//         &mut self.0[index]
+//     }
+// }
 
-/// ProductionTable
-pub struct ProductionTable(Vec<ProductionRule>);
-impl ProductionTable {
-    pub fn new() -> Self { ProductionTable(Vec::new()) }
-    pub fn with_capacity(capacity: usize) -> Self {ProductionTable(Vec::with_capacity(capacity))}
+// /// ProductionTable
+// pub struct ProductionTable(Vec<ProductionRule>);
+// impl ProductionTable {
+//     pub fn new() -> Self { ProductionTable(Vec::new()) }
+//     pub fn with_capacity(capacity: usize) -> Self {ProductionTable(Vec::with_capacity(capacity))}
 
-    pub fn add(&mut self, rule: ProductionRule) {
-        let index = rule.index;
-        self.0[index] = rule;
-    }
-}
+//     pub fn add(&mut self, rule: ProductionRule) {
+//         let index = rule.index;
+//         self.0[index] = rule;
+//     }
+// }
 
-impl Display for ProductionTable {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f,"{}",self.0.iter().map(|c| {format!("{}",c.to_string())}).collect::<String>())
-    }
-}
+// impl Display for ProductionTable {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         writeln!(f,"{}",self.0.iter().map(|c| {format!("{}",c.to_string())}).collect::<String>())
+//     }
+// }
 
-impl Index<usize> for ProductionTable {
-    type Output = ProductionRule;
-    fn index(&self, index: usize) -> &ProductionRule {
-        &self.0[index]
-    }
-}
-impl IndexMut<usize> for ProductionTable {
-    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
-        &mut self.0[index]
-    }
-}
+// impl Index<usize> for ProductionTable {
+//     type Output = ProductionRule;
+//     fn index(&self, index: usize) -> &ProductionRule {
+//         &self.0[index]
+//     }
+// }
+// impl IndexMut<usize> for ProductionTable {
+//     fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+//         &mut self.0[index]
+//     }
+// }
 
-impl Table for ProductionTable {
-    type Item = ProductionRule;
+// impl Table for ProductionTable {
+//     type Item = ProductionRule;
 
-    fn add(&mut self, item: Self::Item) {
-        let i = item.index;
-        self.0[i] = item;
-    }
+//     fn add(&mut self, item: Self::Item) {
+//         let i = item.index;
+//         self.0[i] = item;
+//     }
 
-    fn insert(&mut self, index: usize, value: Self::Item) {
-        self.0[index] = value;
-    }
+//     fn insert(&mut self, index: usize, value: Self::Item) {
+//         self.0[index] = value;
+//     }
 
-    fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
+//     fn is_empty(&self) -> bool {
+//         self.0.is_empty()
+//     }
 
-    fn get(&self, item: Self::Item) -> Option<&Self::Item> {
-        if item.index <= self.len() {
-            return Some(&self.0[item.index])
-        }
-        None
-    }
+//     fn get(&self, item: Self::Item) -> Option<&Self::Item> {
+//         if item.index <= self.len() {
+//             return Some(&self.0[item.index])
+//         }
+//         None
+//     }
 
-    fn len(&self) -> usize {
-        self.0.len()
-    }
+//     fn len(&self) -> usize {
+//         self.0.len()
+//     }
 
-    fn resize(&mut self, sz: usize) {
-        self.0.resize_with(sz,  || ProductionRule::default());
-    }
+//     fn resize(&mut self, sz: usize) {
+//         self.0.resize_with(sz,  || ProductionRule::default());
+//     }
 
-    fn clear(&mut self) {
-        self.0.clear()
-    }
-}
+//     fn clear(&mut self) {
+//         self.0.clear()
+//     }
+// }
 
 
-/// GroupTable
-pub struct GroupTable(Vec<LexicalGroup>);
-impl GroupTable {
-    pub fn new() -> Self { GroupTable(Vec::new()) }
-    pub fn add(&mut self, group: LexicalGroup) {
-        let i = group.index;
-        self.0[i] = group;
-    }
+// /// GroupTable
+// pub struct GroupTable(Vec<LexicalGroup>);
+// impl GroupTable {
+//     pub fn new() -> Self { GroupTable(Vec::new()) }
+//     pub fn add(&mut self, group: LexicalGroup) {
+//         let i = group.index;
+//         self.0[i] = group;
+//     }
 
-}
-impl Index<usize> for GroupTable {
-    type Output = LexicalGroup;
-    fn index(&self, index: usize) -> &LexicalGroup {
-        &self.0[index]
-    }
-}
+// }
+// impl Index<usize> for GroupTable {
+//     type Output = LexicalGroup;
+//     fn index(&self, index: usize) -> &LexicalGroup {
+//         &self.0[index]
+//     }
+// }
 
 
 

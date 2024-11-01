@@ -12,19 +12,20 @@ use super::egt::EnhancedGrammarTable;
 use super::reduction::Reduction;
 use crate::engine::states::ActionType;
 use crate::engine::{LALRState, Stack, Position, Symbol, SymbolType, DFAState, reduction};
-use crate::engine::tables::{GroupTable, Table};
+use crate::engine::tables::{Table};
 use crate::engine::token::{Token};
 use super::source::SourceReader;
-use super::{Builder, SymbolTable};
+use super::{Builder, LexicalGroup, SymbolTable};
 
 /// Trait for exposing granular parsing methods
 pub trait GPParser {
     /// Load the grammar EGT 5.0
     fn load_grammar(grammar: String) -> EnhancedGrammarTable {
         let file = PathBuf::from(grammar);
-        let mut bldr = Builder::new(file.into_os_string());
-        bldr.init();
-        bldr.to_egt()
+        // let mut bldr = Builder::new(file.into_os_string());
+        // bldr.init();
+        // bldr.to_egt()
+        Builder::new(file.into_os_string()).to_egt()
     }
 
     /// Read the your source code to be parsed into a string buffer
@@ -150,7 +151,7 @@ pub struct Parser {
 
     /// Lexical groups
     group: Stack<Token>,
-    groups: GroupTable,
+    groups: Vec<LexicalGroup>,
 
     // Reductions
     /// **TODO** For *Reductions*
@@ -189,7 +190,7 @@ impl Parser {
             curr_state: 0,
             stack: Stack::new(),
             group: Stack::new(),
-            groups: GroupTable::new(),
+            groups: vec!(),
             expected_symbols: SymbolTable::new(),
             have_reduction: false,
             trim_reductions: false,
@@ -491,7 +492,7 @@ impl GPParser for Parser {
     fn input_token(&mut self) -> Token {
         trace!("input_token()");
         let mut token = Token::default();
-        let mut curr_state = self.grammar.initial_states.dfa as usize;
+        let mut curr_state = self.grammar.dfa_init_state as usize;
         let mut length = 1;
         let mut last_accept_state: i32 = -1;
         let mut last_accept_pos: i32 = -1;
@@ -499,12 +500,12 @@ impl GPParser for Parser {
         let mut done = false;
 
         while !done {
-            let mut ch = '';
+            let mut ch: u16 = 0;
             // Search all the branches of the current DFA state for the next
             // character in the input stream. If found, the target state is returned.
             //let ch = self.lookahead(length);
             if let Some(c) = self.lookahead(length) {
-                ch = c;
+                ch = c as u16;
             } else {
                 //done = true;
                 token.symbol.kind = SymbolType::EndOfFile;
@@ -567,7 +568,7 @@ impl GPParser for Parser {
         self.source.clear();
         //self.lookahead_buf.clear();
         //self.properties.clear();
-        self.curr_state = self.grammar.initial_states.lalr as usize;
+        self.curr_state = self.grammar.lalr_init_state as usize;
         self.stack.clear();
         self.group.clear();
         // TODO self.groups.clear()
@@ -715,14 +716,14 @@ pub mod test {
     }
     #[test]
     fn new() {
-        let parser = Parser::new(crate::test::GP_TEST_EGT.to_string());
+        let parser = Parser::new(crate::test::GP_SIMPLE_EGT.to_string());
         println!("About:\n{}",parser.about());
-        assert_eq!(parser.grammar.property("Name"),"BADASS");
+        assert_eq!(parser.grammar.property("Name"),"Simple");
     }
     #[test]
     fn load_source() {
-        let mut parser = Parser::new(crate::test::GP_TEST_EGT.to_string());
-        if let Ok(_) = parser.load_source(crate::test::GP_TEST_SRC.to_string()) {
+        let mut parser = Parser::new(crate::test::GP_SIMPLE_EGT.to_string());
+        if let Ok(_) = parser.load_source(crate::test::GP_SIMPLE_SRC.to_string()) {
             println!("{}",parser.version());
             println!("Source length: {}", parser.source.len());
             println!("Source:\n{}",parser.source.to_string());

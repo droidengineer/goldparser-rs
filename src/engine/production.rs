@@ -16,7 +16,7 @@ use super::{Symbol, SymbolType, SymbolTable, tables::Table};
 
 pub use ProductionRule as Rule;
 
-#[derive(Debug,Default,Clone)]
+#[derive(Debug,Default,Clone,PartialEq)]
 /// Represents the  
 /// 
 /// Each rule consists of a series of `Symbol`s, both terminals and nonterminals,

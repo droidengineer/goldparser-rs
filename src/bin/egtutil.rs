@@ -13,14 +13,14 @@ const PROG_INFO: &str = "
 egtutils v1.0.0 : Enhanced Grammar Table Utility Program
 Usage: egtutils <command> <egt_file>
 where <command> is:
-symbols     Dump the symbol table
-rules       Dump the production rules
-properties  Dump the EGT properties
-dfa         Dump the DFA State Table
-lalr        Dump the LALR State Table
-charset     Dump the character set table
-group       <TBD>
-interactive Run EGT REPL Shell
+  symbols     Dump the symbol table
+  rules       Dump the production rules
+  properties  Dump the EGT properties
+  dfa         Dump the DFA State Table
+  lalr        Dump the LALR State Table
+  charset     Dump the character set table
+  group       <TBD>
+  interactive Run EGT REPL Shell
 
 <egt_file> is the path to the EGT file for your grammar.
 e.g. egtutils rules mygrammar.egt
@@ -42,10 +42,10 @@ fn main() {
             println!("[Symbols]\n{}",egt.symbols.to_string());
         },
         "rules" => println!("[Production Rules]\n{}",egt.productions),
-        "properties" => println!("[Properties]\n{}",egt.properties_as_string()),
+        "properties" => println!("[Properties]\n{}",egt.properties.iter().fold(String::new(),|mut acc,p| { acc.push_str(format!("{} = {}\n",p.name,p.value).as_str()); acc})),
         "dfa" => println!("[DFA State Table]\n{}",egt.dfa_states),
         "lalr" => println!("[LALR State Table]\n{}",egt.lalr_states),
-        "charset" => println!("[Character Set Table]\n{}",egt.charset),
+        "charset" => println!("[Character Set Table]\n{}",egt.charset[2]),
         "counts" => println!("[Total Counts]\n{}",egt.counts),
         "group" => println!("[Group Table]\n{}","self.groups"),
         "interactive" => { interactive(&args[2]).expect("wtf");
@@ -60,6 +60,9 @@ fn main() {
  //   parser.run();
 }
 
+// fn print_charsets(sets: &Vec<crate::CharacterSet>) -> String {
+
+// }
 use std::io;
 fn interactive(egt: &String) -> io::Result<()>{
     print!("(B)rowse the Grammar Tables, (P)arse from source, or Parse (R)EPL [B/P/R/Quit]? ");
