@@ -12,7 +12,6 @@ use super::egt::EnhancedGrammarTable;
 use super::reduction::Reduction;
 use crate::engine::states::ActionType;
 use crate::engine::{LALRState, Stack, Position, Symbol, SymbolType, DFAState, reduction};
-use crate::engine::tables::{Table};
 use crate::engine::token::{Token};
 use super::source::SourceReader;
 use super::{Builder, LexicalGroup, SymbolTable};
@@ -211,8 +210,8 @@ impl Parser {
         self.properties.get("About").expect("No About property").to_string()
     }
 
-    fn get_dfa_state(&self, index: usize) -> &DFAState {
-        &self.grammar.dfa_states[index]
+    fn get_dfa_state(&self, index: u16) -> &DFAState {
+        &self.grammar.dfa_states[index as usize]
     }
     fn get_lalr_state(&self, state: usize) -> &LALRState {
         &self.grammar.lalr_states[state]
@@ -240,6 +239,7 @@ impl Parser {
 
     pub fn symbol_by_name(&self, name: &str) -> Option<&Symbol> {
         self.grammar.symbols.get(name.to_string())
+        //tables_new::get_sym_by_name(name, &self.grammar.symbols)
     }
     pub fn symbol_by_type(&self, kind: SymbolType) -> Option<&Symbol> {
         self.grammar.symbols.get_by_type(kind)
@@ -412,7 +412,7 @@ impl GPParser for Parser {
                 // This section of the algorithm will reduce the rule specified by action.action
                 // Produce a reduction - remove as many Tokens as members in the rule and push
                 // a non-terminal Token
-                let rule = &self.grammar.productions[parse_action.target_idx];
+                let rule = &self.grammar.productions[parse_action.target_idx as usize];
                 // Create a new non-terminal to represent the reduction
                 let mut head = Token::default();
                 
@@ -447,8 +447,8 @@ impl GPParser for Parser {
                                       .cloned()
                 {
                     Some(action) => {
-                        self.curr_state = action.target_idx;
-                        head.lalr_state = action.target_idx;
+                        self.curr_state = action.target_idx as usize;
+                        head.lalr_state = action.target_idx as usize;
                         self.stack.push(head);
                     }
                     None => result = GPParseResult::InternalError,
@@ -464,7 +464,7 @@ impl GPParser for Parser {
             ActionType::Shift  => {
                 trace!("ActionType::Shift");
                 // Shift to target state and push the current Token.
-                self.curr_state = parse_action.target_idx;  //self.get_lalr_state(parse_action.target_idx);
+                self.curr_state = parse_action.target_idx as usize;  //self.get_lalr_state(parse_action.target_idx);
                 input_token.lalr_state = self.curr_state;
                 self.input_tokens.push(input_token.clone());
                 result = GPParseResult::Shift;
@@ -479,8 +479,9 @@ impl GPParser for Parser {
 
                 for action in lrstate {
                     if action.action == ActionType::Shift {
-                        
-                        self.expected_symbols.add(action.symbol.clone());
+                        let i = action.symbol.index();
+                        //self.expected_symbols[i] = action.symbol.clone();
+                        self.expected_symbols.push(action.symbol);
                     }
                 }
                 result = GPParseResult::SyntaxError;
@@ -492,7 +493,7 @@ impl GPParser for Parser {
     fn input_token(&mut self) -> Token {
         trace!("input_token()");
         let mut token = Token::default();
-        let mut curr_state = self.grammar.dfa_init_state as usize;
+        let mut curr_state = self.grammar.dfa_init_state;
         let mut length = 1;
         let mut last_accept_state: i32 = -1;
         let mut last_accept_pos: i32 = -1;
@@ -525,7 +526,7 @@ impl GPParser for Parser {
                         last_accept_pos = length as i32;
                         debug!("target state {index} accepts a token");
                     }
-                    curr_state = target as usize;
+                    curr_state = target as u16;
                     length += 1;
                     debug!("curr_state = {target}");
                 },
@@ -535,7 +536,7 @@ impl GPParser for Parser {
                         token.text = <Parser as GPParser>::lookahead(self,1).to_string();
                     } else { // create Token and read text for Token.
                         // self.text contains the total number of accept characters
-                        token.symbol = self.get_dfa_state(last_accept_state as usize).accept_symbol.to_owned();
+                        token.symbol = self.get_dfa_state(last_accept_state as u16).accept_symbol.to_owned();
                         token.text = <Parser as GPParser>::lookahead(&self, last_accept_pos as usize).to_string();
                     }
                     done = true;

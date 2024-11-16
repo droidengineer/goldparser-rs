@@ -3,7 +3,7 @@
 //! Use this module to build an `EGT` for use in a grammar parser from a binary .egt file.
 //! Can be converted directly to a `EGT`
 
-use std::{ffi::OsString, fs::File, io::Read, ops::{Range, RangeInclusive}, char::decode_utf16,ops::Deref,};
+use std::{fs, ffi::OsString, fs::{File,ReadDir}, path::Path, io::Read, ops::{Range, RangeInclusive}, char::decode_utf16,ops::Deref,};
 
 use enum_primitive::FromPrimitive;
 use utf16string::{WString, LE, WStr, Utf16Error, BE};
@@ -12,11 +12,18 @@ use crate::engine::{
         charset::{CharacterRange, CharacterSet}, 
         //egt::{EnhancedGrammarTable, PropertyRecord, LexicalGroup, TableCounts}, 
         production::ProductionRule, 
-        states::{ActionType, DFAEdge, DFAState, InitialStatesRecord, LALRAction, LALRState}, 
+        states::{ActionType, DFAEdge, DFAState, LALRAction, LALRState}, 
         symbol::{Symbol, SymbolType}, 
-        tables::Table, SymbolTable
+        SymbolTable
 };
 use super::{EnhancedGrammarTable,TableCounts,PropertyRecord};
+
+pub fn get_all_files_in_location(path: &Path) -> ReadDir {
+    fs::read_dir(path).unwrap_or_else(|err| {
+        error!("Problem reading directory {:?}, error: {}", path, err);
+        panic!();
+    })
+}
 
 #[derive(Debug)]
 /// The `Builder`
@@ -27,7 +34,7 @@ pub struct Builder {
     /// The raw bytes from the EGT file
     bytes: Vec<u8>,
     pos: usize,
-    /// After initialization, collection of `LogicalRecord`s decoded from `bytes`
+    /// Collection of `LogicalRecord`s decoded from `bytes`
     records: Vec<LogicalRecord>,
     initialized: bool,
 }
@@ -58,13 +65,12 @@ impl Builder {
         reval
     }
 
-    /// turns `self.records` into an `EnhancedGrammarTable`
+    /// turns `LogicalRecord`s in `self.records` into an `EnhancedGrammarTable`
     pub fn to_egt(&mut self) -> EnhancedGrammarTable {
         let header = self.read_header();
         let mut egt = EnhancedGrammarTable::new(header.to_string());
         //let records = self.records;
         for record in &self.records { //self.records.as_slice() {
-            //DEBUG println!("{:?}", record.kind);
             match record.kind {
                 //RecordType::Multi => panic!(),
                 RecordType::Property => {
@@ -92,25 +98,26 @@ impl Builder {
                     let _empty = &record.entries[3];
                     
                     //let rec = CharacterSet::new();
-                    let mut r: Vec<CharacterRange> = Vec::new();
+                    let mut ranges: Vec<CharacterRange> = Vec::new();
                     let mut idx: usize = 4;
                     for _ in 0..c {
                         let a = record.entries[idx].integer();
                         let b = record.entries[idx+1].integer();
+
                         // let v = decode_utf16([a,b])
                         //     .map(|r| r.map_err(|e| e.unpaired_surrogate()))
                         //     .collect::<Vec<_>>();
                         // let v0 = v[0].unwrap();
                         // let v1 = v[1].unwrap();
 
-                        r.push(CharacterRange::new(a,b));
+                        ranges.push(CharacterRange::new(a,b));
                         idx += 2;
                     }
-
+                    
                     // let rec = CharacterSet::new(r);
                     //DEBUG println!("{:?}", rec);
                     //egt.charset[i] = rec;
-                    egt.charset[i] = CharacterSet::new_with(r,i as u16);
+                    egt.charset[i] = CharacterSet::new_with(ranges,i as u16);
                     //egt.charset.insert(i,CharacterSet::new_with(r,i as u16));
                 },
                 RecordType::Symbol => {
@@ -120,18 +127,17 @@ impl Builder {
                     //if  index > SymbolType::Error as usize { panic!("SymbolType out of range."); }
                     let k = SymbolType::from_u16(t).expect("Bad Symbol Type");
 
-                    let rec = Symbol::new(index,s,k);
+                    //let rec = Symbol::new(index,s,k);
 
                     //DEBUG println!("{}", rec);c
-                    egt.symbols.add(rec);
+                    egt.symbols[index] = Symbol::new(index as u16,s.as_str(),k);
                 },
-                RecordType::Group => todo!(),
+                RecordType::Group => {},
                 RecordType::Production => {
-                    let index = record.entries[0].as_usize();
+                    let index = record.entries[0].integer();
                     let h = record.entries[1].as_usize();
                     let _empty = &record.entries[2];
-                    //let mut r: Vec<u16> = Vec::new();
-                    let mut symbols: Vec<Symbol> = Vec::new(); //Vec::with_capacity(record.num_entries as usize);
+                    let mut symbols: Vec<Symbol> = vec![]; //Vec::with_capacity(record.num_entries as usize);
                     let mut idx = 3;
                     while idx < (record.num_entries-1) as usize {
                         let ex = record.entries[idx].as_usize();
@@ -145,7 +151,7 @@ impl Builder {
                     let head = egt.symbols[h].clone();
                     let rec = ProductionRule::new(index,head,SymbolTable::from(symbols));
                     //println!("{:?}", rec);
-                    egt.productions[index] = rec;
+                    egt.productions[index as usize] = rec;
                 },
                 RecordType::InitState => {
                     egt.dfa_init_state = record.entries[0].integer();
@@ -157,7 +163,7 @@ impl Builder {
                     //egt.initial_states = rec;                 
                 },
                 RecordType::DFA => {
-                    let state_idx = record.entries[0].as_usize(); // index of this DFAState in DFAStateTable
+                    let state_idx = record.entries[0].integer(); // index of this DFAState in DFAStateTable
                     let accepts_symbol = record.entries[1].bool(); // accept state
                     let ai = record.entries[2].as_usize(); // index into symbol table for accept symbol
                     let _reserved = &record.entries[3];
@@ -166,7 +172,7 @@ impl Builder {
                     //println!("{} DFA[0] {:?} DFA[1] {:?} DFA[2] {:?}",record.num_entries, i, s, ai);
                     while idx < (record.num_entries - 1) as usize  {
                         let a = record.entries[idx].as_usize();   // this edge's characterset index in CharacterSetTable
-                        let b = record.entries[idx+1].as_usize(); // index of target state symbol
+                        let b = record.entries[idx+1].integer(); // index of target state symbol
                         let _empty = &record.entries[idx+2];
                         let chars = egt.charset[a].clone();
                         edges.push(DFAEdge { chars, target_state: b});
@@ -181,12 +187,12 @@ impl Builder {
                     );
                     // DEBUG println!("{}", rec);
                     //egt.dfa_states.insert(state_idx, rec);  
-                    egt.dfa_states[state_idx] = rec;      
+                    egt.dfa_states[state_idx as usize] = rec;      
                 },
                 RecordType::LALR => {
                     // Let's make an LALRState
                     // index into LALRStateTable for this state
-                    let index = record.entries[0].as_usize(); 
+                    let index = record.entries[0].integer(); 
                     let _empty = &record.entries[1];
                     let mut actions: Vec<LALRAction> = Vec::new();
                     let mut idx = 2;
@@ -194,7 +200,7 @@ impl Builder {
                     while idx < (record.num_entries - 1) as usize {
                         let a = record.entries[idx].as_usize(); // symbol index
                         let b = record.entries[idx+1].integer();   // action
-                        let c = record.entries[idx+2].as_usize();  // target index
+                        let c = record.entries[idx+2].integer();  // target index
                         let _ = &record.entries[idx+3]; // empty
                         let symbol = egt.symbols[a].clone();
                         let action = ActionType::from_u16(b).unwrap();
@@ -204,7 +210,7 @@ impl Builder {
                     let rec = LALRState::new(index, actions);
                     // DEBUG println!("{}", rec);
                     //egt.lalr_states.insert(index, rec); 
-                    egt.lalr_states[index] = rec;
+                    egt.lalr_states[index as usize] = rec;
                 },
             }
         }
@@ -271,9 +277,6 @@ impl Builder {
             EntryType::Byte => {
                 let b = self.read_byte();
                 RecordEntry::Byte(b)
-                //let entry = RecordEntry::Byte(b);
-                //println!("@{} => {:?}", self.pos, entry);          
-                //entry
             },
             EntryType::Boolean => {
                 let b = self.read_byte();
@@ -358,6 +361,9 @@ enum_from_primitive! {
         Symbol      = 83,    // 'S'
         Group       = 103,    // 'g'
         Production  = 82, // 'R'
+        /// The `InitialStateRecord` only occurs once in the `EnhancedGrammarTable` file. 
+        /// It will contain the initial states for both the DFA and LALR algorithms.  
+        /// The record is preceded by a byte field contains the value 73, the ASCII code for the letter 'I'.
         InitState   = 73, // 'I'
         DFA         = 68,       // 'D'
         LALR        = 76,      // 'L'

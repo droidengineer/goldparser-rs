@@ -1,7 +1,7 @@
-//!
-//! 
+//! CharacterSet
+//! Ranges of valid characters for a DFA edge
 
-use std::{ops::RangeInclusive};
+use std::ops::RangeInclusive;
 
 
 pub type CharacterRange = RangeInclusive<u16>;
@@ -29,39 +29,19 @@ impl CharacterSet {
     pub fn ranges(&self) -> &Vec<CharacterRange> {&self.0}
     pub fn index(&self) -> u16 {self.1}
 }
-//TODO
 impl std::fmt::Display for CharacterSet {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        // let mut disp_str = String::new();
-        // for i in &self.0 {
-        //     //let rsc = decode_utf16(iter)
-        //     //write!(f,"{:?}",i)
-        //     disp_str.push_str(format!("{:?}",i).as_str());
-        // }
-        // Err(Error)
-        let mut catstr = String::new();
-        let mut charset = self.0.clone();
-        charset.iter_mut().map(|r| {
-            let mut ch = r.next();
-            while ch.is_some() {
-                let c = ch.unwrap();
-                catstr.push(char::from_u32(c as u32).unwrap());
-                ch = r.next();
-            }
-       }).count();
-       write!(f,"{}",catstr)
-
+        let ranges = self.0.clone();
+        let catstr = ranges.into_iter().map(|r| {
+            let result: String = r
+                .filter_map(|re| char::from_u32(re as u32))
+                .collect();
+            result
+        }).collect::<String>();
+        
+        writeln!(f,"{:?}",catstr)
     }
 }
-
-//pub struct CharacterSetTable(Vec<CharacterSet>);
-// impl Default for CharacterSet {
-//     fn default() -> Self {
-//         CharacterSet(vec![])
-//     }
-// }
-//impl<T:Display+Clone+Default> Table for
-
 
 
 #[cfg(test)]
@@ -69,7 +49,7 @@ pub mod test {
     use std::char::decode_utf16;
 
     use super::{CharacterSet, CharacterRange};
-    static mut rs: [u16;11] = [0;11]; //[86,112,100,103,9,11,12,32,160,0];
+    static mut RS: [u16;11] = [86,112,100,103,9,11,12,32,160,0,33]; //[86,112,100,103,9,11,12,32,160,0];
 
 
     #[test]
@@ -80,27 +60,28 @@ pub mod test {
     fn default() {
         let charset = gen_charset();
 
-        println!("{}",charset);
+        println!("Index: {} Ranges: {}\n{}",charset.index(),charset.ranges().len(),charset);
     }
     
     fn gen_charset() -> CharacterSet {
         let mut ranges: Vec<CharacterRange> = vec![];
 
-        unsafe {rs[0] = 86; rs[1] = 112; rs[2] = 100; rs[3] = 103; rs[4] = 9; rs[5] = 11;
-        rs[6] = 12; rs[7] = 32; rs[8] = 160; rs[9] = 0; rs[10] = 33;
-        let rsc = decode_utf16(rs)
+        unsafe {
+        let rsc = decode_utf16(RS)
             .map(|r| r.map_err(|e| e.unpaired_surrogate()))
+            .map(|r| r.unwrap())
             .collect::<Vec<_>>();
         println!("{:?}",rsc);
-        let a = rs[4];
+
+        let a = RS[4];
         ranges.insert(0, a..=a); println!("range added {a}..={a}");
-        let a = rs[5];
-        let b = rs[6];
-        ranges.insert(1, a..=b);
-        let a = rs[7];
-        ranges.insert(2, a..=a);
-        let a = rs[8];
-        ranges.insert(3, a..=a);}
+        let a = RS[5];
+        let b = RS[6];
+        ranges.insert(1, a..=b);println!("range added {a}..={b}");
+        let a = RS[7];
+        ranges.insert(2, a..=a);println!("range added {a}..={a}");
+        let a = RS[8];
+        ranges.insert(3, a..=a);println!("range added {a}..={a}");}
         CharacterSet::new_with(ranges,0)
     }
 

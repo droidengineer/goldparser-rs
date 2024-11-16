@@ -3,7 +3,7 @@
 //! 
 
 use std::fmt::Display;
-
+use std::ops::{Index, IndexMut};
 //use enum_primitive::enum_from_primitive;
 //use utf16string::{WString, LE};
 
@@ -27,30 +27,28 @@ enum_from_primitive! {
     }
 }
 impl SymbolType {
-    pub fn format(&self) -> String {
-        match self {
-            SymbolType::NonTerminal => "NonTerminal".to_string(),
-            SymbolType::Terminal => "Terminal".to_string(),
-            SymbolType::Noise => "Noise".to_string(),
-            SymbolType::EndOfFile => "EOF".to_string(),
-            SymbolType::GroupStart => "GroupStart".to_string(),
-            SymbolType::GroupEnd => "GroupEnd".to_string(),
-            SymbolType::Deprecated => "Deprecated".to_string(),
-            SymbolType::Error => "Error".to_string()
-        }
+
+}
+impl Display for SymbolType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let res = match self {
+            SymbolType::NonTerminal => "NonTerminal",
+            SymbolType::Terminal => "Terminal",
+            SymbolType::Noise => "Noise",
+            SymbolType::EndOfFile => "EOF",
+            SymbolType::GroupStart => "GroupStart",
+            SymbolType::GroupEnd => "GroupEnd",
+            SymbolType::Deprecated => "Deprecated",
+            SymbolType::Error => "Error",
+        };
+        write!(f,"{res}")
     }
 }
-// impl Display for SymbolType {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        
-//     }
-// }
-
 
 #[derive(Debug,Default,Clone)]
 pub struct Symbol {
     /// Index into the EGT Symbol Table
-    pub index: usize,
+    index: u16,
     /// Name of the symbol as character or string
     pub name: String,
     /// Class of symbols this symbol belongs to   
@@ -58,29 +56,29 @@ pub struct Symbol {
 }
 
 impl Symbol {
-    //pub const DEFAULT: Symbol = Symbol { index: 0, name: String::from(""), kind: SymbolType::Undefined };
-    const QUOTE_CHARS: &'static str = "|+*?()[]{}<>!";
+    const QUOTE_CHARS: &'static str = "|+*?()[]{}<>!._-";
 
-    pub fn new(index: usize, name: String, kind: SymbolType) -> Self {
-        Symbol { index, name, kind }
+    pub fn new(index: u16, name: &str, kind: SymbolType) -> Self {
+        Symbol { index, name: name.to_owned(), kind }
     }
 
-    /// Encapsulates a string with single quotes
-    /// TODO This may be accomplished thru the `String::quote`
-    pub fn quote(&self, src: Utf16) -> String {
+    pub fn index(&self) -> usize { self.index as usize }
+
+    /// Encapsulates a `Utf16` with single quotes
+    pub fn quote_utf16(&self, src: Utf16, delimit_terminals: bool) -> String {
         let source = src.to_string();
-        if source.contains(Self::QUOTE_CHARS) {
+        if source.contains(Self::QUOTE_CHARS) || delimit_terminals {
             format!("'{}'", source)
         } else {
             source
         }
     }
 
-    /// Returns the text representation of the symbol as follows:
+    /// Returns the text BNF representation of the symbol as follows:
     /// * \<NonTerminal\>
     /// * 'Terminal'
     /// * (Special)
-    pub fn as_handle(&self) -> String {
+    pub fn as_bnf(&self) -> String {
         match self.kind {
             SymbolType::NonTerminal =>  format!("<{}>", self.name),
             SymbolType::Terminal => format!("\'{}\'", self.name),
@@ -95,7 +93,8 @@ impl Symbol {
 /// * terminals: 'name'
 impl Display for Symbol {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f,"Index: {:4} Symbol {} Type {}",self.index, self.as_handle(), self.kind.format())
+        //writeln!(f,"Idx: {:<4}  {:<16} Type: {}",self.index, self.as_bnf(), self.kind)
+        writeln!(f,"{}",self.as_bnf())
     }
 }
 
@@ -106,47 +105,103 @@ impl PartialEq for Symbol {
 }
 
 
+// impl<'a> Default for &'a Symbol {
+//     fn default() -> &'a Self {
+//         Symbol::default().
+//     }
+// }
 
+#[derive(Debug,Default,Clone)]
+pub struct SymbolTable(Vec::<Symbol>);
+//pub struct SymbolTable(HashMap<String, Symbol>);
+impl SymbolTable {
 
-/// #[derive(Debug)]
-/// Each record describing a symbol in the Symbol Table is preceded by a byte containing 
-/// the value 83 - the ASCII value of "S". The file will contain one of these records for 
-/// each symbol in the grammar. The Table Count record, which precedes any symbol records, 
-/// will contain the total number of symbols.
-/* pub struct SymbolTableRecord {
-    /// Index of symbol in `GOLDParser` 's `SymbolTableRecord`
-    pub index: u16,
-    /// Name of the symbol as character or string
-    pub name: WString<LE>,
-    /// Class of symbols this symbol belongs to
-    pub kind: SymbolType,
-}
-
-impl SymbolTableRecord {
-    pub fn new(index: u16, name: WString<LE>, kind: SymbolType) -> Self {
-        SymbolTableRecord { index, name, kind }
-    }
-    pub fn name(&self) -> String {
-        self.name.to_string()
+    pub fn new() -> Self {
+        SymbolTable(Vec::new())
     }
 
-}
-
-
-impl Display for SymbolTableRecord {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self.kind {
-            SymbolType::NonTerminal => write!(f, "<{}>", self.name.to_string()),
-            SymbolType::Terminal => {
-                //let n = self.name.to_string().as_str();
-                //let re = Regex::new(n).unwrap();
-                write!(f, "\'{}\'", self.name.to_string())
-            },
-
-            _ => write!(f, "({})", self.name.to_string())
+    pub fn as_handle(&self) -> String {
+        format!("{}\n", self.0.iter().map(|s| s.as_bnf() + " ").collect::<String>())
+    }
+    pub fn get(&self, name: String) -> Option<&Symbol> {
+        for sym in &self.0 {
+            if sym.name == name { return Some(sym) }
         }
+        None
     }
-} */
+    // gets 1st occurance of `SymbolType` in the table
+    pub fn get_by_type(&self, kind: SymbolType) -> Option<&Symbol> {
+        for sym in &self.0 {
+            if sym.kind == kind { return Some(sym) }
+        }
+        None
+    }
+    pub fn with_capacity(size: usize) -> Self {
+        SymbolTable(Vec::with_capacity(size))
+    }
+    pub fn push(&mut self, item: Symbol) {
+        self.0.push(item);
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    pub fn resize(&mut self, sz: usize) {
+        self.0.resize(sz, Symbol::default());//Self::DEFAULT);
+    }    
+    
+    pub fn clear(&mut self) {
+        self.0.clear();
+    }
+    
+}
+
+impl Display for SymbolTable {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f,"{}", self.0.iter().map(|s| format!("Idx: {:<4}  {:<16} Type: {}\n",s.index(), s.as_bnf(), s.kind)).collect::<String>())//.collect::<String>())
+    }
+}
+
+impl From<Vec::<Symbol>> for SymbolTable {
+    fn from(value: Vec::<Symbol>) -> Self {
+        SymbolTable(value)
+    }
+}
+impl Index<usize> for SymbolTable {
+    type Output = Symbol;
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.0[index]
+        //panic!("No symbol found at index {}",index)
+    }
+}
+impl IndexMut<usize> for SymbolTable {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        &mut self.0[index]
+    }
+}
+
+
+// pub trait TableItem: Default+Clone+Display+PartialEq {}
+// impl<T:Default+Display+Clone+PartialEq> TableItem for T {}
+// pub trait SymbolItem : TableItem {
+//     type Item;
+
+//     fn get_by_name(&self, item: &str) -> Option<&Symbol>;
+//     fn get_by_type(&self, kind: SymbolType) -> Option<&Self::Item>;
+//     fn as_handle(&self) -> String;
+// }
+
+
+
+
+
+
+
+
 
 #[cfg(test)]
 pub mod test {
@@ -157,7 +212,7 @@ pub mod test {
     #[test]
     fn symbol_type() {
         let kind = SymbolType::NonTerminal;
-        println!("{} {:?}",kind.format(),kind);
+        println!("{} {:?}",kind,kind);
     }
 
 }

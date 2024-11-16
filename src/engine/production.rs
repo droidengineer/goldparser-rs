@@ -10,14 +10,12 @@
 //! http://goldparser.org/doc/egt/record-production.htm
 
 
-use std::{fmt::Display};
-
-use super::{Symbol, SymbolType, SymbolTable, tables::Table};
+use super::{Symbol, SymbolType, SymbolTable, };
 
 pub use ProductionRule as Rule;
 
-#[derive(Debug,Default,Clone,PartialEq)]
-/// Represents the  
+#[derive(Debug,Default,Clone)]
+/// Represents the rules of the grammar.
 /// 
 /// Each rule consists of a series of `Symbol`s, both terminals and nonterminals,
 /// and the single nonterminal (head) that the rule defines. Rules are not
@@ -30,14 +28,14 @@ pub use ProductionRule as Rule;
 /// Symbols of a rule e.g. 'Identifier' '=' 'Expression' | 
 /// Tokens of a rule e.g. variable1 = (variable1*0.025)
 pub struct ProductionRule {
-    pub index: usize,
+    pub index: u16,
     pub head: Symbol,
-    pub symbols: SymbolTable, //Vec<Symbol>,
+    pub symbols: SymbolTable,
 }
 
 impl ProductionRule {
     //pub const DEFAULT: ProductionRule = ProductionRule { index: 0, head: Symbol::default(), symbols: SymbolTable::new()};
-    pub fn new(index: usize, head: Symbol, symbols: SymbolTable) -> Self {
+    pub fn new(index: u16, head: Symbol, symbols: SymbolTable) -> Self {
         ProductionRule { index, head, symbols }
     }
     pub fn has_only_nonterminal(&self) -> bool {
@@ -51,13 +49,15 @@ impl ProductionRule {
         //self.symbols.to_string()
         self.symbols.as_handle()
     }
+    pub fn index(&self) -> usize {self.index as usize}
+    
     //// Prints the *Backus-Naur* representation of the rule
     // pub fn to_string(&self) -> String {
     //     format!("{:16} ::= {}",self.head.name, self.handle())
     // }
 }
 
-impl Display for ProductionRule {
+impl std::fmt::Display for ProductionRule {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f,"{:16} ::= {}",self.head.name, self.handle())
     }

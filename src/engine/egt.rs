@@ -4,12 +4,11 @@ use crate::engine::{
         charset::CharacterSet, 
         Symbol, SymbolTable,
         production::ProductionRule, 
-        states::{InitialStatesRecord, DFAState, LALRState},
-        tables::{Table, },
+        states::{DFAState, LALRState},
+        
         
     };
 
-use super::{tables_new::GPTable};
 
 
 
@@ -18,18 +17,20 @@ pub struct EnhancedGrammarTable {
     pub header: String,
     pub properties: Vec<PropertyRecord>,
     pub counts: TableCounts,
-    pub charset: GPTable<CharacterSet>, //Vec<CharacterSet>,
+    pub charset: Vec<CharacterSet>,
     pub symbols: SymbolTable,
-    pub groups: GPTable<LexicalGroup>,
-    //pub productions: Vec<ProductionRule>,
-    pub productions: GPTable<ProductionRule>,
-    //pub initial_states: InitialStatesRecord,
+    pub groups: Vec<LexicalGroup>,
+    pub productions: Vec<ProductionRule>,
+    //pub productions: GPTable<ProductionRule>,
+    /// The initial state in the Deterministic Finite Automata table. Normally, due to how the generation
+    /// algorithm is implemented, this value should be 0    
     pub dfa_init_state: u16,
+    /// The initial state in the LALR state table. Like the DFA state table, this value should normally be 0
     pub lalr_init_state: u16,
-    //pub dfa_states: Vec<DFAState>,
-    pub dfa_states: GPTable<DFAState>,
-    //pub lalr_states: Vec<LALRState>,
-    pub lalr_states: GPTable<LALRState>,
+    pub dfa_states: Vec<DFAState>,
+    //pub dfa_states: GPTable<DFAState>,
+    pub lalr_states: Vec<LALRState>,
+    //pub lalr_states: GPTable<LALRState>,
 }
 
 impl EnhancedGrammarTable {
@@ -42,16 +43,21 @@ impl EnhancedGrammarTable {
             header,
             properties: vec![],
             counts: TableCounts {symtab: 0, charset: 0, rules: 0, dfatab: 0, lalrtab: 0, lexgroups: 0 },
-            charset: GPTable::<CharacterSet>::default(),
-            symbols: SymbolTable::new(),
-            groups: GPTable::<LexicalGroup>::default(),
-            productions: GPTable::<ProductionRule>::default(),
+            charset: vec![],
+            symbols: SymbolTable::default(),
+            groups: vec![],
+            productions: vec![],
             dfa_init_state: 0, lalr_init_state: 0,
-            dfa_states: GPTable::<DFAState>::default(),
-            lalr_states: GPTable::<LALRState>::default(),
+            dfa_states: vec![],
+            lalr_states: vec![],
         }
     }
     
+    // pub fn get_sym_by_name(&self, name: String) -> Option<&Symbol> {
+    //     for sym in &self.symbols. {
+    //         if 
+    //     }   
+    // }
     
     /// Searches (name,value) pairs by name and returns value
     pub fn property(&self, name: &str) -> &str {
@@ -71,40 +77,33 @@ impl EnhancedGrammarTable {
     #[inline(always)]
     pub fn resize(&mut self) {
         self.symbols.resize(self.counts.symtab as usize);
-        self.charset.resize(self.counts.charset as usize);
-        self.productions.resize(self.counts.rules as usize);
-        self.dfa_states.resize(self.counts.dfatab as usize);
-        self.lalr_states.resize(self.counts.lalrtab as usize);
+        self.charset.resize(self.counts.charset as usize, CharacterSet::default());
+        self.productions.resize(self.counts.rules as usize, ProductionRule::default());
+        self.dfa_states.resize(self.counts.dfatab as usize, DFAState::default()); //.resize(self.counts.dfatab as usize);
+        self.lalr_states.resize(self.counts.lalrtab as usize, LALRState::default());
     
     }
     
     #[inline(always)]
     pub fn total_records(&self) -> usize {
-        self.properties.len() + //self.counts.len() +
+        self.properties.len() + 1 + //self.counts.len() +
         self.charset.len() + self.symbols.len() +
         self.groups.len() + self.productions.len() +
         self.dfa_states.len() + self.lalr_states.len()
     }
 }
 
-/// The `Builder` must have already called `Builder::init()`
-// impl From<Builder> for EnhancedGrammarTable {
-//     fn from(mut builder: Builder) -> Self {
-//         builder.to_egt()
-//     }
-// }
-
 impl Display for EnhancedGrammarTable {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f,"[Properties]\n{}\n",self.properties.iter().map(|p| {format!("{} = {}\n",p.name,p.value)}).collect::<String>())?;
         write!(f,"[Total Counts]\n{}\n\n", self.counts)?;
-        write!(f,"[Character Sets]\n{}\n\n", self.charset)?;
-        write!(f,"[Symbols]\n{}\n", self.symbols.to_string())?;
+        write!(f,"[Character Sets]\n{}\n\n", self.charset.iter().map(|t| t.to_string()).collect::<String>())?;
+        write!(f,"[Symbols]\n{}\n", self.symbols)?;
         write!(f,"[Groups]\n{}\n", "self.groups")?;
-        write!(f,"[Productions]\n{}\n", self.productions)?;
+        write!(f,"[Productions]\n{}\n", self.productions.iter().map(|t| t.to_string()).collect::<String>())?;
         write!(f,"[Initial States]\n dfa: {} lalr: {}\n", self.dfa_init_state, self.lalr_init_state)?;
-        write!(f,"[DFA States]\n{}\n", self.dfa_states)?;
-        write!(f,"[LALR States]\n{}\n", self.lalr_states)?;
+        write!(f,"[DFA States]\n{}\n", self.dfa_states.iter().map(|t| t.to_string()).collect::<String>())?;
+        write!(f,"[LALR States]\n{}\n", self.lalr_states.iter().map(|t| t.to_string()).collect::<String>())?;
         write!(f,"END")
     }
 }
@@ -234,12 +233,12 @@ pub enum EndingMode {
 
 #[cfg(test)]
 mod test {
-    use crate::engine::{EnhancedGrammarTable, tables::Table, builder::test::gen_builder};
+    use crate::engine::{EnhancedGrammarTable, builder::test::gen_builder};
 
     #[test]
     fn dfa() {
         let egt = gen_egt();
-        println!("{}",egt.dfa_states);  
+        println!("{}",egt.dfa_states.iter().map(|t| t.to_string()).collect::<String>());  
     }
     #[test]
     fn display() {
@@ -249,16 +248,12 @@ mod test {
 
     #[test]
     fn from_builder() {
-        // let mut bldr = gen_builder();
-        // let egt = bldr.to_egt();
-        let egt = gen_builder().to_egt();
-        assert_eq!(egt.header.to_string(),"GOLD Parser Tables/v5.0");
-        println!("OK");
+
         let egt = gen_egt();
         assert_eq!(egt.header.to_string(),"GOLD Parser Tables/v5.0");
         println!("OK");
 
-        println!("Header: {}", egt.header.to_string());
+        println!("Header: {}", egt.header);
         println!("Properties: {}", egt.properties.len());
         println!("Table Counts: {}", egt.counts);
         println!("Character Sets: Expected: {} Read: {}", egt.counts.charset, egt.charset.len());
