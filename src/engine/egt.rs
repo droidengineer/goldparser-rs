@@ -3,7 +3,7 @@ use std::{fmt::Display, collections::HashMap};
 use crate::engine::{ 
         charset::CharacterSet, 
         Symbol, SymbolTable,
-        production::ProductionRule, 
+        production::Rule, 
         states::{DFAState, LALRState},
         
         
@@ -20,7 +20,7 @@ pub struct EnhancedGrammarTable {
     pub charset: Vec<CharacterSet>,
     pub symbols: SymbolTable,
     pub groups: Vec<LexicalGroup>,
-    pub productions: Vec<ProductionRule>,
+    pub productions: Vec<Rule>,
     //pub productions: GPTable<ProductionRule>,
     /// The initial state in the Deterministic Finite Automata table. Normally, due to how the generation
     /// algorithm is implemented, this value should be 0    
@@ -52,7 +52,9 @@ impl EnhancedGrammarTable {
             lalr_states: vec![],
         }
     }
-    
+    pub fn get_rule_by_index(&self, index: u16) -> Option<&Rule> {
+        if self.productions.len() as u16 <= index { Some(&self.productions[index as usize]) } else { None }
+    }
     // pub fn get_sym_by_name(&self, name: String) -> Option<&Symbol> {
     //     for sym in &self.symbols. {
     //         if 
@@ -78,7 +80,7 @@ impl EnhancedGrammarTable {
     pub fn resize(&mut self) {
         self.symbols.resize(self.counts.symtab as usize);
         self.charset.resize(self.counts.charset as usize, CharacterSet::default());
-        self.productions.resize(self.counts.rules as usize, ProductionRule::default());
+        self.productions.resize(self.counts.rules as usize, Rule::default());
         self.dfa_states.resize(self.counts.dfatab as usize, DFAState::default()); //.resize(self.counts.dfatab as usize);
         self.lalr_states.resize(self.counts.lalrtab as usize, LALRState::default());
     
@@ -232,7 +234,7 @@ pub enum EndingMode {
 
 
 #[cfg(test)]
-mod test {
+pub mod test {
     use crate::engine::{EnhancedGrammarTable, builder::test::gen_builder};
 
     #[test]
@@ -266,7 +268,7 @@ mod test {
         println!("Total Records: {}", egt.total_records());
     }
 
-    fn gen_egt() -> EnhancedGrammarTable {
+    pub fn gen_egt() -> EnhancedGrammarTable {
         gen_builder().to_egt()
     }
 

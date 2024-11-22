@@ -8,7 +8,7 @@
 use std::collections::HashMap;
 
 use crate::engine::*;
-use crate::engine::{Parser, reduction::Reduction, parser::{GPParser, ParserError}, Value, SymbolType, token::Token};
+use crate::engine::{Parser, reduction::Reduction, parser::{GPParser, ParserError}, Value, SymbolType, token::TokenOld};
 use super::Scope;
 
 
@@ -201,7 +201,7 @@ impl GOLDParser {
         self.curr_scope = Scope::default();
         self.root = None;
     }
-    pub fn get_current_token(&self) -> &Token {
+    pub fn get_current_token(&self) -> &TokenOld {
         self.parser.input_tokens.peek().expect("current token from input tokens empty")
     }
     pub fn parser(&mut self) -> &mut Parser {

@@ -2,7 +2,7 @@
 //! Ranges of valid characters for a DFA edge
 
 use std::ops::RangeInclusive;
-
+use super::prelude::*;
 
 pub type CharacterRange = RangeInclusive<u16>;
 
@@ -29,7 +29,7 @@ impl CharacterSet {
     pub fn ranges(&self) -> &Vec<CharacterRange> {&self.0}
     pub fn index(&self) -> u16 {self.1}
 }
-impl std::fmt::Display for CharacterSet {
+impl Display for CharacterSet {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let ranges = self.0.clone();
         let catstr = ranges.into_iter().map(|r| {

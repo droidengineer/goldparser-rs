@@ -10,8 +10,8 @@ use crate::engine::Position;
 pub struct SourceReader {
     pub src: Vec<char>,
     buf: String,
-    pub pos: Position,  // line,col position
-    bufpos: usize,      // absolute position
+    pub pos: Position,  // line,col position in `src`
+    bufpos: usize,      // absolute position in `buf`
 }
 
 

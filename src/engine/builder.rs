@@ -3,15 +3,15 @@
 //! Use this module to build an `EGT` for use in a grammar parser from a binary .egt file.
 //! Can be converted directly to a `EGT`
 
-use std::{fs, ffi::OsString, fs::{File,ReadDir}, path::Path, io::Read, ops::{Range, RangeInclusive}, char::decode_utf16,ops::Deref,};
+use std::{fs, ffi::OsString, fs::{File,ReadDir}, path::Path, io::Read, ops::Deref,};
 
 use enum_primitive::FromPrimitive;
-use utf16string::{WString, LE, WStr, Utf16Error, BE};
+use utf16string::{WString, LE};
 
 use crate::engine::{ 
         charset::{CharacterRange, CharacterSet}, 
         //egt::{EnhancedGrammarTable, PropertyRecord, LexicalGroup, TableCounts}, 
-        production::ProductionRule, 
+        production::Rule, 
         states::{ActionType, DFAEdge, DFAState, LALRAction, LALRState}, 
         symbol::{Symbol, SymbolType}, 
         SymbolTable
@@ -125,7 +125,7 @@ impl Builder {
                     let s = record.entries[1].string();
                     let t = record.entries[2].integer();
                     //if  index > SymbolType::Error as usize { panic!("SymbolType out of range."); }
-                    let k = SymbolType::from_u16(t).expect("Bad Symbol Type");
+                    let k = SymbolType::try_from(t).expect("Bad Symbol Type");
 
                     //let rec = Symbol::new(index,s,k);
 
@@ -149,7 +149,7 @@ impl Builder {
                     }
 
                     let head = egt.symbols[h].clone();
-                    let rec = ProductionRule::new(index,head,SymbolTable::from(symbols));
+                    let rec = Rule::new_with(index,head,SymbolTable::from(symbols));
                     //println!("{:?}", rec);
                     egt.productions[index as usize] = rec;
                 },
@@ -450,14 +450,14 @@ impl LogicalRecord {
 #[cfg(test)]
 pub mod test {
     use core::panic;
-    use std::{path::PathBuf, fs::File, io::Read, borrow::Borrow};
+    use std::{path::PathBuf, fs::File, io::Read, };
 
     use enum_primitive::FromPrimitive;
     use utf16string::WString;
 
     use crate::test::GP_SIMPLE_EGT;
 
-    use super::{RecordType, LogicalRecord, EntryType, RecordEntry};
+    use super::{RecordType, LogicalRecord, EntryType, };
     use super::Builder;
 
     const FILE_NAME: &str = GP_SIMPLE_EGT;
@@ -496,7 +496,7 @@ pub mod test {
     fn read_logical_record() {
         let mut bldr = gen_builder();
         let header = bldr.read_string();
-        println!("header: {}", header.to_string());
+        println!("header: {}", header.as_wstr());
         let mut entries = 0;
         while bldr.pos < bldr.bytes.len() {
             let byte = bldr.read_byte();
@@ -511,7 +511,7 @@ pub mod test {
     #[test]
     fn read_logical_record_test() {
         let mut bldr = gen_builder();
-        let hdr = bldr.read_string();
+        let _hdr = bldr.read_string();
         //let mut pos = hdr.len() + 2;
         let mut byte = bldr.read_byte();
         assert_eq!(byte, 77);
@@ -527,7 +527,7 @@ pub mod test {
         //pos += 2;
         match rectype {
             RecordType::Property => {  
-                for n in 1..lrec.num_entries {
+                for _n in 1..lrec.num_entries {
                     byte = bldr.read_byte();
                     let kind = EntryType::from_u8(byte).unwrap();
                     let entry = bldr.read_entry(kind);
@@ -551,8 +551,8 @@ pub mod test {
 
     pub fn gen_builder() -> Builder {
         let file = PathBuf::from(FILE_NAME);
-        let bldr = Builder::new(file.into_os_string());
-        bldr
+        
+        Builder::new(file.into_os_string())
     }
 
 }

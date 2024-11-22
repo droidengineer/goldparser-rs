@@ -7,9 +7,59 @@ use super::alloc::vec;
 use super::alloc::vec::Vec;
 use core::ops::{Index,Range};
 
-/// A stack.
-///
-/// Supports only the most basic stack operations needed for the machine.
+/// Super simple (_fixed size, avoid unnecessary initialization_), 
+/// fast(_no dynamic allocation,  operations *O(1)* runtime_), 
+/// safe(_type safety over `T`, buffer-overflow bounds check, unsafe_),
+/// stack-allocated stack using array.
+/// Supports only the most basic operations.
+/// 
+#[derive(Debug)]
+pub struct FixedStack<T, const N: usize> {
+    data: [std::mem::MaybeUninit<T>; N],
+    len: usize,
+}
+impl<T, const N: usize> FixedStack<T,N> {
+    pub fn new() -> Self {
+        Self {
+            data: unsafe { std::mem::MaybeUninit::uninit().assume_init() },
+            len: 0,
+        }
+    }
+    pub fn push(&mut self, item: T) -> bool {
+        if self.len < N {
+            self.data[self.len].write(item);
+            self.len += 1;
+            true
+        } else { false }
+    }
+    pub fn pop(&mut self) -> Option<T> {
+        if self.len > 0 {
+            self.len -= 1;
+            Some(unsafe {
+                self.data[self.len].assume_init_read()
+            })
+        } else { None }
+    }
+    pub fn len(&self) -> usize {
+        self.len
+    }
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+}
+impl<T, const N: usize> Drop for FixedStack<T,N> {
+    fn drop(&mut self) {
+        while let Some(_) = self.pop() {}
+    }
+}
+impl<T, const N: usize> Default for FixedStack<T,N> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// A fancier stack with stack management, stack state,
+/// and _restore and unwind_ features.
 /// Implemending using a `Vec`.
 ///
 /// ```
@@ -23,7 +73,7 @@ use core::ops::{Index,Range};
 /// let value = stack.pop();
 /// assert_eq!(value, 13);
 /// ```
-#[derive(Debug, Default)]
+#[derive(Debug, Default,Clone)]
 pub struct Stack<T: Clone> {
     ops: Vec<StackOp<T>>,
     stack: Vec<T>,
@@ -39,7 +89,9 @@ impl<T: Clone> Stack<T> {
             snapshots: vec![],
         }
     }
+    pub fn resize(&mut self, sz: usize) {
 
+    }
     /// Returns `true` if the stack contains no elements.
     #[allow(dead_code)]
     pub fn is_empty(&self) -> bool {
@@ -133,7 +185,7 @@ impl<T: Clone> Index<Range<usize>> for Stack<T> {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug,Clone)]
 enum StackOp<T> {
     Push(T),
     Pop(T),

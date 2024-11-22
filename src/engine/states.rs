@@ -203,7 +203,14 @@ enum_from_primitive! {
     }
 }
 
-
+pub enum ConflictType {
+    Undefined = 0,
+    ShiftShift,
+    ShiftReduce,
+    ReduceReduce,
+    AcceptReduce,
+    None,
+}
 
 
 

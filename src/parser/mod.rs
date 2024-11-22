@@ -2,9 +2,9 @@ use std::collections::HashMap;
 
 use crate::engine::Value;
 
-pub mod parser;
+//pub mod parser;
 
-pub use parser::GOLDParser;
+//pub use parser::GOLDParser;
 
 
 /// Types implementing the `RuleHandler` 

@@ -22,6 +22,7 @@ use core::{fmt::Debug};
 use core::hash::Hash;
 
 use enum_primitive::enum_from_primitive;
+use reduction::Reduction;
 use utf16string::{LE, WString};
 
 //pub use utf16string::WString as WString;
@@ -39,18 +40,25 @@ pub mod egt;
 pub mod source;
 pub mod parser;
 
-pub use stack::Stack;
+pub mod prelude {
+    pub use std::fmt::Display;
+    pub use crate::engine::builder::Builder;
+    pub use crate::engine::egt::EnhancedGrammarTable;
+}
+
+pub use token::{Token,TokenStack};
+pub use stack::{Stack,FixedStack};
 pub use charset::{CharacterSet};
 pub use symbol::{Symbol, SymbolType, SymbolTable};
-pub use production::{ProductionRule};
+pub use production::Rule;
 pub use states::{DFAState, DFAEdge, LALRState, LALRAction};
 pub use source::SourceReader;
-pub use parser::Parser;
+//pub use parser::Parser;
 pub use egt::{EnhancedGrammarTable, TableCounts, LexicalGroup, PropertyRecord};
 pub use builder::Builder;
 
 
-use self::token::Token;
+//use self::token::Token;
 
 #[derive(Default,Debug,Clone,Copy,PartialEq,Eq)]
 pub struct Position(usize,usize);
@@ -169,7 +177,7 @@ impl<'i> Span<'i> {
 #[derive(Debug,Clone)]
 pub enum Value {
     String(String),
-    Reduction(Vec<Token>),
+    Reduction(Reduction),
     Bool(bool),
     Integer(u16),
     Timestamp(Instant),
@@ -181,7 +189,7 @@ impl Value {
             _ => None,
         }
     }
-    pub fn as_reduction(&self) -> Option<&Vec<Token>> {
+    pub fn as_reduction(&self) -> Option<&Reduction> {
         match self {
             Value::Reduction(r) => Some(r),
             _ => None,
